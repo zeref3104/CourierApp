@@ -1,0 +1,1 @@
+export default function UserFormPage() { return <div className="text-center py-12 text-gray-400">Formulario de Usuario — Próximamente</div>; }

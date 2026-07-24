@@ -1,0 +1,1 @@
+export default function SettingsPage() { return <div className="text-center py-12 text-gray-400">Configuración — Próximamente</div>; }

@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: courier-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-changeme}
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../apps/api
+      dockerfile: Dockerfile.dev
+    container_name: courier-api
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    volumes:
+      - ../apps/api/src:/app/src
+      - ../apps/api/logs:/app/logs
+    env_file:
+      - ../apps/api/.env
+    environment:
+      NODE_ENV: development
+      MONGO_URI: mongodb://admin:${MONGO_ROOT_PASSWORD:-changeme}@mongodb:27017
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+volumes:
+  mongo-data:

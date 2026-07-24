@@ -1,0 +1,17 @@
+FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 express
+COPY --from=deps --chown=express:nodejs /app/node_modules ./node_modules
+COPY --chown=express:nodejs . .
+RUN mkdir -p logs && chown express:nodejs logs
+USER express
+EXPOSE 3000
+ENV NODE_ENV=production
+CMD ["node", "src/server.js"]

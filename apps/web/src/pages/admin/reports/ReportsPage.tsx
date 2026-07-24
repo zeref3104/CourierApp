@@ -1,0 +1,1 @@
+export default function ReportsPage() { return <div className="text-center py-12 text-gray-400">Módulo de Reportes — Próximamente</div>; }

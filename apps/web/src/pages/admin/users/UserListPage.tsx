@@ -1,0 +1,1 @@
+export default function UserListPage() { return <div className="text-center py-12 text-gray-400">Módulo de Usuarios — Próximamente</div>; }

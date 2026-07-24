@@ -1,0 +1,210 @@
+const BaseRepository = require('../../repositories/base/base.repository');
+const NotFoundException = require('../../exceptions/NotFoundException');
+const ValidationException = require('../../exceptions/ValidationException');
+const { eventBus, EVENTS } = require('../../events');
+const { STATUS_TRANSITIONS } = require('../../models/tenant/index');
+
+class PackageService {
+  constructor(models) {
+    this.models = models;
+    this.repository = new BaseRepository(models.Package);
+    this.historyRepo = new BaseRepository(models.PackageHistory);
+  }
+
+  async create(data, userId) {
+    const customer = await this.models.Customer.findById(data.customerId);
+    if (!customer) throw new NotFoundException('Customer');
+
+    const pricePerLb = await this._getSetting('price_per_lb', 0);
+    const minimumPrice = await this._getSetting('minimum_price', 0);
+    const taxRate = await this._getSetting('tax_rate', 18);
+
+    let baseCost = data.weight * Number(pricePerLb);
+    if (baseCost < Number(minimumPrice)) baseCost = Number(minimumPrice);
+    const tax = baseCost * (Number(taxRate) / 100);
+    const total = baseCost + tax;
+
+    const tracking = await this._generateTracking();
+
+    const pkg = await this.repository.create({
+      ...data,
+      tracking,
+      cost: baseCost,
+      shippingCost: baseCost,
+      tax,
+      total,
+      status: 'recibido_miami',
+      createdById: userId,
+      receivedAt: new Date(),
+    });
+
+    await this._recordHistory(pkg._id, null, 'recibido_miami', userId, 'Package created');
+
+    eventBus.emit(EVENTS.PACKAGE_CREATED, { package: pkg, userId });
+    eventBus.emit(EVENTS.PACKAGE_STATUS_CHANGED, {
+      package: pkg,
+      fromStatus: null,
+      toStatus: 'recibido_miami',
+      userId,
+    });
+
+    return pkg;
+  }
+
+  async findAll(query = {}) {
+    const {
+      page = 1, limit = 20, search, status, branchId,
+      customerId, isPaid, dateFrom, dateTo,
+      sortBy = 'createdAt', sortOrder = 'desc',
+    } = query;
+
+    const filter = {};
+
+    if (search) {
+      filter.$or = [
+        { tracking: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
+    }
+    if (status) filter.status = Array.isArray(status) ? { $in: status } : status;
+    if (branchId) filter.branchId = branchId;
+    if (customerId) filter.customerId = customerId;
+    if (isPaid !== undefined) filter.isPaid = isPaid === 'true';
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) filter.createdAt.$lte = new Date(dateTo);
+    }
+
+    return this.repository.findAll(filter, {
+      page: Number(page),
+      limit: Number(limit),
+      sort: { [sortBy]: sortOrder === 'desc' ? -1 : 1 },
+      populate: [
+        { path: 'customerId', select: 'name lastName code phone' },
+        { path: 'branchId', select: 'name' },
+      ],
+    });
+  }
+
+  async findByTracking(tracking) {
+    const pkg = await this.models.Package.findOne({ tracking })
+      .populate('customerId', 'name lastName code phone email')
+      .populate('branchId', 'name');
+
+    if (!pkg) throw new NotFoundException(`Package with tracking ${tracking}`);
+    return pkg;
+  }
+
+  async findById(id) {
+    const pkg = await this.repository.findById(id, {
+      populate: [
+        { path: 'customerId', select: 'name lastName code phone' },
+        { path: 'branchId', select: 'name' },
+      ],
+    });
+    if (!pkg) throw new NotFoundException('Package');
+    return pkg;
+  }
+
+  async update(id, data) {
+    const pkg = await this.repository.findById(id);
+    if (!pkg) throw new NotFoundException('Package');
+
+    if (data.weight && data.weight !== pkg.weight) {
+      const pricePerLb = await this._getSetting('price_per_lb', 0);
+      const minimumPrice = await this._getSetting('minimum_price', 0);
+      const taxRate = await this._getSetting('tax_rate', 18);
+
+      let baseCost = data.weight * Number(pricePerLb);
+      if (baseCost < Number(minimumPrice)) baseCost = Number(minimumPrice);
+      data.cost = baseCost;
+      data.shippingCost = baseCost;
+      data.tax = baseCost * (Number(taxRate) / 100);
+      data.total = baseCost + data.tax;
+    }
+
+    return this.repository.updateById(id, data);
+  }
+
+  async changeStatus(id, newStatus, userId, notes = '') {
+    const pkg = await this.repository.findById(id);
+    if (!pkg) throw new NotFoundException('Package');
+
+    const allowed = STATUS_TRANSITIONS[pkg.status] || [];
+    if (!allowed.includes(newStatus)) {
+      throw new ValidationException([{
+        field: 'status',
+        message: `Cannot transition from '${pkg.status}' to '${newStatus}'`,
+      }]);
+    }
+
+    const updateData = { status: newStatus };
+    if (newStatus === 'entregado') {
+      updateData.deliveredAt = new Date();
+      updateData.deliveredById = userId;
+    }
+
+    const updated = await this.repository.updateById(id, updateData);
+    await this._recordHistory(id, pkg.status, newStatus, userId, notes);
+
+    eventBus.emit(EVENTS.PACKAGE_STATUS_CHANGED, {
+      package: updated,
+      fromStatus: pkg.status,
+      toStatus: newStatus,
+      userId,
+      notes,
+    });
+
+    return updated;
+  }
+
+  async getHistory(packageId) {
+    const history = await this.models.PackageHistory.find({ packageId })
+      .sort({ createdAt: -1 })
+      .populate('changedBy', 'name')
+      .populate('branchId', 'name');
+
+    return history;
+  }
+
+  async uploadPhotos(packageId, files) {
+    const pkg = await this.repository.findById(packageId);
+    if (!pkg) throw new NotFoundException('Package');
+
+    const urls = files.map((f) => f.path);
+    pkg.photos.push(...urls);
+    await pkg.save();
+
+    return pkg.photos;
+  }
+
+  async _recordHistory(packageId, fromStatus, toStatus, userId, notes) {
+    return this.historyRepo.create({
+      packageId,
+      fromStatus,
+      toStatus,
+      changedBy: userId,
+      notes,
+    });
+  }
+
+  async _generateTracking() {
+    const prefix = process.env.TENANT_PREFIX || 'CPR';
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const count = await this.repository.count({ createdAt: { $gte: todayStart } });
+    const sequence = String(count + 1).padStart(4, '0');
+
+    return `${prefix}-${date}-${sequence}`;
+  }
+
+  async _getSetting(key, defaultValue) {
+    const setting = await this.models.Setting.findOne({ key });
+    return setting ? setting.value : defaultValue;
+  }
+}
+
+module.exports = PackageService;

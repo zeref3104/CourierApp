@@ -1,0 +1,1 @@
+export default function PaymentFormPage() { return <div className="text-center py-12 text-gray-400">Registro de Pago — Próximamente</div>; }
