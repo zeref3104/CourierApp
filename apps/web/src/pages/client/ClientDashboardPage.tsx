@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { dashboardService } from '../../../services/dashboard.service';
-import { Card } from '../../../components/ui/Card';
-import { StatusBadge } from '../../../components/ui/Badge';
-import { formatCurrency } from '../../../utils/formatCurrency';
+import { dashboardService } from '../../services/dashboard.service';
+import { Card } from '../../components/ui/Card';
+import { StatusBadge } from '../../components/ui/Badge';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 export default function ClientDashboardPage() {
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
-    import('../../../services/package.service').then(({ packageService }) => {
+    import('../../services/package.service').then(({ packageService }) => {
       packageService.findAll({ customerId: 'me', limit: 5 }).then((r) => setData(r.data));
     });
   }, []);

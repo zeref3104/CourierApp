@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Card } from '../../../components/ui/Card';
-import { Table } from '../../../components/ui/Table';
-import { StatusBadge } from '../../../components/ui/Badge';
+import { Card } from '../../components/ui/Card';
+import { Table } from '../../components/ui/Table';
+import { StatusBadge } from '../../components/ui/Badge';
 
 export default function MyPackagesPage() {
   const [packages, setPackages] = useState<any[]>([]);
 
   useEffect(() => {
     // Client packages will be loaded via /client/packages endpoint
-    import('../../../config/axios').then(({ default: api }) => {
+    import('../../config/axios').then(({ default: api }) => {
       api.get('/client/packages').then((r) => setPackages(r.data.data || []));
     });
   }, []);

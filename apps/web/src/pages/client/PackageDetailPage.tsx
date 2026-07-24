@@ -1,8 +1,8 @@
 import { useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Card } from '../../../components/ui/Card';
-import { StatusBadge } from '../../../components/ui/Badge';
-import { formatDate } from '../../../utils/formatDate';
+import { Card } from '../../components/ui/Card';
+import { StatusBadge } from '../../components/ui/Badge';
+import { formatDate } from '../../utils/formatDate';
 
 export default function ClientPackageDetailPage() {
   const { tracking } = useParams();
@@ -10,7 +10,7 @@ export default function ClientPackageDetailPage() {
 
   useEffect(() => {
     if (!tracking) return;
-    import('../../../config/axios').then(({ default: api }) => {
+    import('../../config/axios').then(({ default: api }) => {
       api.get(`/client/packages/${tracking}`).then((r) => setPkg(r.data.data));
     });
   }, [tracking]);
