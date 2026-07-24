@@ -9,7 +9,8 @@
     "start": "node src/server.js",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
-    "test:integration": "jest --config jest.integration.config.js"
+    "test:integration": "jest --config jest.integration.config.js",
+    "seed": "node scripts/seed.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
