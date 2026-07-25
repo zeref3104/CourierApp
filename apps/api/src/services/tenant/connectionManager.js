@@ -89,6 +89,18 @@ class ConnectionManager {
     }
   }
 
+  async dropDatabase(dbName) {
+    // Close existing connection if pooled
+    await this.closeConnection(dbName);
+
+    // Create temp connection to drop the DB
+    const uri = `${process.env.MONGO_URI}/${dbName}`;
+    const tempConn = await mongoose.createConnection(uri).asPromise();
+    await tempConn.dropDatabase();
+    await tempConn.close();
+    logger.info(`Database dropped: ${dbName}`);
+  }
+
   async closeAll() {
     logger.info(`Closing all connections (${this.connections.size})...`);
     const promises = [];

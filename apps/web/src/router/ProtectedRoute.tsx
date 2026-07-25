@@ -14,6 +14,11 @@ export default function ProtectedRoute({ roles }: ProtectedRouteProps) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // SuperAdmin bypass — has access to everything
+  if (user?.role === 'superadmin') {
+    return <Outlet />;
+  }
+
   if (roles && user && !roles.includes(user.role)) {
     if (user.role === 'client') {
       return <Navigate to="/client" replace />;

@@ -88,37 +88,39 @@ export default function UserListPage() {
       <Card padding={false}>
         <Table
           headers={['Email', 'Nombre', 'Rol', 'Sucursal', 'Estado', 'Acciones']}
+          items={users}
           loading={loading}
-        >
-          {users.map((u) => (
-            <tr key={u._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-              <td className="px-4 py-3 text-sm">{u.email}</td>
-              <td className="px-4 py-3">{u.name} {u.lastName}</td>
-              <td className="px-4 py-3">
-                <Badge>{ROLE_LABELS[u.role] || u.role}</Badge>
-              </td>
-              <td className="px-4 py-3 text-sm">{u.branchId?.name || '—'}</td>
-              <td className="px-4 py-3">
-                <Badge variant={u.isActive !== false ? 'success' : 'danger'}>
-                  {u.isActive !== false ? 'Activo' : 'Inactivo'}
-                </Badge>
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex gap-2">
-                  <Link to={`/users/${u._id}`} className="text-primary-600 hover:text-primary-700 text-sm">
-                    Editar
-                  </Link>
-                  <button
-                    onClick={() => handleToggleStatus(u._id)}
-                    className="text-red-600 hover:text-red-700 text-sm"
-                  >
-                    {u.isActive !== false ? 'Desactivar' : 'Activar'}
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </Table>
+          renderRow={(u) => (
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Email</span>
+                <span className="text-sm">{u.email}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Nombre</span>
+                <span>{u.name} {u.lastName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Rol</span>
+                <span><Badge>{ROLE_LABELS[u.role] || u.role}</Badge></span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Sucursal</span>
+                <span className="text-sm">{u.branchId?.name || '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Estado</span>
+                <span><Badge variant={u.isActive !== false ? 'success' : 'danger'}>{u.isActive !== false ? 'Activo' : 'Inactivo'}</Badge></span>
+              </div>
+              <div className="pt-2 border-t border-gray-100 dark:border-gray-700 flex gap-2 justify-end">
+                <Link to={`/users/${u._id}`} className="text-primary-600 hover:text-primary-700 text-sm">Editar</Link>
+                <button onClick={() => handleToggleStatus(u._id)} className="text-red-600 hover:text-red-700 text-sm">
+                  {u.isActive !== false ? 'Desactivar' : 'Activar'}
+                </button>
+              </div>
+            </div>
+          )}
+        />
       </Card>
 
       <Pagination page={meta.page} totalPages={meta.totalPages} onPageChange={load} />

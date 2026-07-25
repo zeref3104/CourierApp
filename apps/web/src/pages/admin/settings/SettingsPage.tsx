@@ -5,7 +5,7 @@ import { Input } from '../../../components/ui/Input';
 
 export default function SettingsPage() {
   const [form, setForm] = useState({
-    companyName: '', address: '', phone: '', email: '', currency: 'USD',
+    companyName: '', address: '', phone: '', email: '', rnc: '', currency: 'DOP',
   });
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -19,7 +19,8 @@ export default function SettingsPage() {
           address: s.address || '',
           phone: s.phone || '',
           email: s.email || '',
-          currency: s.currency || 'USD',
+          rnc: s.rnc || '',
+          currency: s.currency || 'DOP',
         });
       }).catch(() => {});
     });
@@ -30,7 +31,7 @@ export default function SettingsPage() {
     setLoading(true);
     try {
       const { default: api } = await import('../../../config/axios');
-      await api.put('/settings', form);
+      await api.patch('/settings', form);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err: any) {
@@ -49,6 +50,7 @@ export default function SettingsPage() {
           <Input label="Dirección" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
           <Input label="Teléfono" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <Input label="RNC" value={form.rnc} onChange={(e) => setForm({ ...form, rnc: e.target.value })} placeholder="101-00000-0" />
           <div>
             <label className="block text-sm font-medium mb-1">Moneda</label>
             <select
@@ -56,8 +58,8 @@ export default function SettingsPage() {
               onChange={(e) => setForm({ ...form, currency: e.target.value })}
               className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
             >
+              <option value="DOP">DOP - Peso dominicano</option>
               <option value="USD">USD - Dólar</option>
-              <option value="ARS">ARS - Peso argentino</option>
               <option value="EUR">EUR - Euro</option>
             </select>
           </div>

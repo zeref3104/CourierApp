@@ -5,6 +5,8 @@ interface CustomerState {
   current: any | null;
   total: number;
   loading: boolean;
+  searchResults: any[];
+  searchLoading: boolean;
 }
 
 const initialState: CustomerState = {
@@ -12,6 +14,8 @@ const initialState: CustomerState = {
   current: null,
   total: 0,
   loading: false,
+  searchResults: [],
+  searchLoading: false,
 };
 
 const customerSlice = createSlice({
@@ -29,8 +33,19 @@ const customerSlice = createSlice({
     setLoading(state, action: PayloadAction<boolean>) {
       state.loading = action.payload;
     },
+    setSearchResults(state, action: PayloadAction<any[]>) {
+      state.searchResults = action.payload;
+      state.searchLoading = false;
+    },
+    setSearchLoading(state, action: PayloadAction<boolean>) {
+      state.searchLoading = action.payload;
+    },
+    clearSearchResults(state) {
+      state.searchResults = [];
+      state.searchLoading = false;
+    },
   },
 });
 
-export const { setCustomers, setCurrentCustomer, setLoading } = customerSlice.actions;
+export const { setCustomers, setCurrentCustomer, setLoading, setSearchResults, setSearchLoading, clearSearchResults } = customerSlice.actions;
 export default customerSlice.reducer;

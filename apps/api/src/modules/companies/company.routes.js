@@ -1,20 +1,21 @@
 const router = require('express').Router();
 const companyController = require('./company.controller');
+const authController = require('../auth/auth.controller');
+const validate = require('../../middlewares/validate');
 const auth = require('../../middlewares/auth');
+const { superadminLoginSchema } = require('../../validators/schemas/auth.schema');
 
-// All superadmin routes need auth
+// Public superadmin login (no auth required)
+router.post('/login', validate(superadminLoginSchema), authController.superadminLogin);
+
+// All other superadmin routes need auth
 router.use(auth);
-
-router.post('/login', (req, res) => {
-  // SuperAdmin login is handled separately
-  res.status(501).json({ success: false, error: { code: 'NOT_IMPLEMENTED', message: 'SuperAdmin login not yet implemented' } });
-});
 
 router.get('/companies', companyController.findAll);
 router.post('/companies', companyController.create);
 router.get('/companies/:id', companyController.findById);
 router.patch('/companies/:id', companyController.update);
-router.delete('/companies/:id', companyController.deactivate);
+router.delete('/companies/:id', companyController.delete);
 
 router.get('/plans', async (req, res) => {
   const Plan = req.app.locals.masterConnection.model('Plan');

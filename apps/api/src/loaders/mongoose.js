@@ -17,6 +17,7 @@ async function initMaster() {
   connection.model('Plan', require('../models/master/Plan'));
   connection.model('License', require('../models/master/License'));
   connection.model('SuperAdmin', require('../models/master/SuperAdmin'));
+  connection.model('TenantUserIndex', require('../models/master/TenantUserIndex'));
 
   connection.on('error', (err) => {
     logger.error('Master DB connection error:', err);

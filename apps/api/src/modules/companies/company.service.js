@@ -1,12 +1,28 @@
-const Company = require('../../models/master/Company');
 const Plan = require('../../models/master/Plan');
 const License = require('../../models/master/License');
 const ConflictException = require('../../exceptions/ConflictException');
 const NotFoundException = require('../../exceptions/NotFoundException');
+const connectionManager = require('../../services/tenant/connectionManager');
 const logger = require('../../logs/logger');
 
 class CompanyService {
-  async create(data) {
+  getCompanyModel(masterConnection) {
+    return masterConnection.model('Company');
+  }
+
+  getPlanModel(masterConnection) {
+    return masterConnection.model('Plan');
+  }
+
+  getLicenseModel(masterConnection) {
+    return masterConnection.model('License');
+  }
+
+  async create(data, masterConnection) {
+    const Company = this.getCompanyModel(masterConnection);
+    const Plan = this.getPlanModel(masterConnection);
+    const License = this.getLicenseModel(masterConnection);
+
     const existing = await Company.findOne({ slug: data.slug });
     if (existing) throw new ConflictException('Company slug already exists');
 
@@ -32,10 +48,59 @@ class CompanyService {
     });
 
     logger.info(`Company created: ${company.slug} (DB: ${databaseName})`);
-    return company;
+
+    // Provision tenant database — get connection creates it if not exists
+    let tenantConnection;
+    try {
+      tenantConnection = await connectionManager.getConnection({
+        id: company._id,
+        slug: company.slug,
+        dbName: company.databaseName,
+      });
+    } catch (err) {
+      logger.error(`Failed to get tenant connection for ${company.slug}: ${err.message}`);
+      await Company.findByIdAndDelete(company._id);
+      throw err;
+    }
+
+    // Upsert Admin role
+    const Role = tenantConnection.model('Role');
+    let adminRole = await Role.findOne({ code: 'admin' });
+    if (!adminRole) {
+      adminRole = await Role.create({
+        name: 'Admin',
+        code: 'admin',
+        description: 'System administrator',
+        permissions: ['*.*'],
+        isSystem: true,
+      });
+    }
+
+    // Create admin user
+    const User = tenantConnection.model('User');
+    await User.create({
+      name: 'Administrador',
+      email: data.adminEmail,
+      password: 'Admin123',
+      roleId: adminRole._id,
+      mustChangePassword: true,
+    });
+
+    // Index email → tenant in master DB for automatic tenant resolution on login
+    const TenantUserIndexModel = masterConnection.model('TenantUserIndex');
+    await TenantUserIndexModel.create({
+      email: data.adminEmail,
+      companyId: company._id,
+      tenantSlug: company.slug,
+    });
+
+    logger.info(`Tenant provisioned for ${company.slug}: role + admin user created`);
+
+    return { ...company.toObject(), defaultPassword: 'Admin123', adminEmail: data.adminEmail };
   }
 
-  async findAll(query) {
+  async findAll(query, masterConnection) {
+    const Company = this.getCompanyModel(masterConnection);
     const { page = 1, limit = 20, search, status, sortBy = 'createdAt', sortOrder = 'desc' } = query;
     const filter = {};
 
@@ -63,14 +128,17 @@ class CompanyService {
     };
   }
 
-  async findById(id) {
+  async findById(id, masterConnection) {
+    const Company = this.getCompanyModel(masterConnection);
+    const License = this.getLicenseModel(masterConnection);
     const company = await Company.findById(id).populate('planId');
     if (!company) throw new NotFoundException('Company');
     const license = await License.findOne({ companyId: company._id }).sort({ createdAt: -1 });
     return { company, license };
   }
 
-  async update(id, data) {
+  async update(id, data, masterConnection) {
+    const Company = this.getCompanyModel(masterConnection);
     const company = await Company.findById(id);
     if (!company) throw new NotFoundException('Company');
 
@@ -84,19 +152,30 @@ class CompanyService {
     return company;
   }
 
-  async deactivate(id) {
+  async delete(id, masterConnection) {
+    const Company = this.getCompanyModel(masterConnection);
+    const License = this.getLicenseModel(masterConnection);
     const company = await Company.findById(id);
     if (!company) throw new NotFoundException('Company');
 
-    company.isActive = false;
-    await company.save();
+    const dbName = company.databaseName;
 
-    await License.updateMany(
-      { companyId: company._id, status: { $in: ['active', 'trial'] } },
-      { status: 'cancelled', endDate: new Date() }
-    );
+    // Drop the tenant database
+    try {
+      await connectionManager.dropDatabase(dbName);
+    } catch (err) {
+      logger.error(`Failed to drop database ${dbName}: ${err.message}`);
+      // Continue — delete company record even if DB drop fails
+    }
 
-    return company;
+    // Delete licenses
+    await License.deleteMany({ companyId: company._id });
+
+    // Delete the company record
+    await Company.findByIdAndDelete(id);
+
+    logger.info(`Company deleted: ${company.slug} (DB: ${dbName})`);
+    return { deleted: true, slug: company.slug, databaseName: dbName };
   }
 }
 

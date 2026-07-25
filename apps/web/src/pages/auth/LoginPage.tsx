@@ -32,7 +32,11 @@ export default function LoginPage() {
     try {
       const response = await authService.login(data);
       dispatch(setCredentials(response.data));
-      navigate('/');
+      if (response.data.mustChangePassword) {
+        navigate('/auth/change-password');
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Error al iniciar sesión');
     } finally {

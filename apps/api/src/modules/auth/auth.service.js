@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const jwtService = require('./jwt.service');
+const jwtService = require('../../services/auth/jwt.service');
 const tokenService = require('./token.service');
 const UnauthorizedException = require('../../exceptions/UnauthorizedException');
 const NotFoundException = require('../../exceptions/NotFoundException');
@@ -53,6 +53,7 @@ class AuthService {
     return {
       accessToken,
       refreshToken,
+      mustChangePassword: user.mustChangePassword || false,
       user: {
         id: user._id,
         name: user.name,
@@ -62,6 +63,42 @@ class AuthService {
         permissions: role?.permissions,
         branchId: user.branchId,
         isClient: user.isClient,
+      },
+    };
+  }
+
+  async superadminLogin(email, password, masterConnection) {
+    const SuperAdmin = masterConnection.model('SuperAdmin');
+    const admin = await SuperAdmin.findOne({ email, isActive: true }).select('+password');
+    if (!admin) throw new UnauthorizedException('Invalid credentials');
+
+    const isMatch = await admin.comparePassword(password);
+    if (!isMatch) throw new UnauthorizedException('Invalid credentials');
+
+    admin.lastLogin = new Date();
+    await admin.save();
+
+    const accessToken = jwtService.generateAccessToken({
+      _id: admin._id,
+      email: admin.email,
+      role: 'superadmin',
+      roleId: null,
+      branchId: null,
+      permissions: ['*'],
+      isSuperAdmin: true,
+    });
+
+    const refreshToken = tokenService.generateRefreshToken();
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: 'superadmin',
+        permissions: ['*'],
       },
     };
   }
@@ -103,6 +140,20 @@ class AuthService {
     }
     await models.User.findByIdAndUpdate(userId, { refreshToken: null });
     eventBus.emit(EVENTS.USER_LOGOUT, { userId });
+  }
+
+  async changePassword(userId, currentPassword, newPassword, models) {
+    const user = await models.User.findById(userId).select('+password');
+    if (!user) throw new NotFoundException('User');
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) throw new UnauthorizedException('Current password is incorrect');
+
+    user.password = newPassword;
+    user.mustChangePassword = false;
+    await user.save();
+
+    return { message: 'Password changed successfully' };
   }
 
   async getProfile(userId, models) {

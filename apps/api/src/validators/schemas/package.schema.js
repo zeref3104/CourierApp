@@ -2,6 +2,7 @@ const { z } = require('zod');
 
 const createPackageSchema = z.object({
   customerId: z.string().min(1, 'Customer is required'),
+  carrierTracking: z.string().max(100).optional(),
   description: z.string().min(1, 'Description is required').max(500),
   weight: z.number().positive('Weight must be positive').max(500),
   length: z.number().positive().optional(),

@@ -44,7 +44,7 @@ export default function UserFormPage() {
       <h1 className="text-2xl font-bold mb-6">Nuevo Usuario</h1>
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             <Input label="Apellido" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
           </div>
@@ -58,7 +58,7 @@ export default function UserFormPage() {
             placeholder="Mínimo 6 caracteres"
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Rol</label>
               <select

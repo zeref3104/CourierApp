@@ -2,26 +2,39 @@ const mongoose = require('mongoose');
 const connectionManager = require('../services/tenant/connectionManager');
 const TenantNotFoundException = require('../exceptions/TenantNotFoundException');
 
+// Public routes that don't require tenant resolution
+const PUBLIC_ROUTES = [
+  '/auth/login',
+  '/auth/client/login',
+  '/auth/refresh',
+  '/auth/password',
+  '/auth/superadmin/login',
+  '/superadmin/login',
+];
+
 async function tenantResolver(req, res, next) {
   try {
+    // Skip tenant resolution for public routes
+    if (PUBLIC_ROUTES.some(route => req.path.startsWith(route))) {
+      return next();
+    }
+
     // Skip tenant resolution for SuperAdmin routes
-    if (req.path.startsWith('/api/v1/superadmin')) {
+    if (req.path.startsWith('/superadmin')) {
       return next();
     }
 
     // Extract tenant slug from subdomain or header
-    const host = req.headers.host || '';
+    const host = (req.headers.host || '').split(':')[0]; // strip port
     const slugFromSubdomain = host.split('.')[0];
     const tenantSlug = req.headers['x-tenant-slug'] || slugFromSubdomain;
 
     if (!tenantSlug || tenantSlug === 'localhost' || tenantSlug === 'www') {
-      // Dev fallback: allow single-tenant mode
-      const devSlug = process.env.DEV_TENANT_SLUG;
-      if (process.env.NODE_ENV === 'development' && devSlug) {
-        req.tenantSlug = devSlug;
-      } else {
-        return next(new TenantNotFoundException(tenantSlug || 'unknown'));
+      if (process.env.NODE_ENV === 'development') {
+        // In development, skip tenant resolution — auth middleware resolves from JWT
+        return next();
       }
+      return next(new TenantNotFoundException(tenantSlug || 'unknown'));
     }
 
     const slug = req.tenantSlug || tenantSlug;

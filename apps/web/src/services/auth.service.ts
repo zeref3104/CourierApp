@@ -15,4 +15,7 @@ export const authService = {
   logout: () => api.post('/auth/logout').then((r) => r.data),
 
   me: () => api.get<ApiResponse<any>>('/auth/me').then((r) => r.data),
+
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    api.patch<ApiResponse<{ message: string }>>('/auth/password', data).then((r) => r.data),
 };

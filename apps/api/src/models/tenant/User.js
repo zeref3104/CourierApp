@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     isClient: { type: Boolean, default: false },
     clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
+    mustChangePassword: { type: Boolean, default: false },
     lastLogin: { type: Date },
     refreshToken: { type: String, select: false },
     failedLoginAttempts: { type: Number, default: 0 },

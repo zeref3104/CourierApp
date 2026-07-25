@@ -1,26 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { packageService } from '../../../services/package.service';
-import { customerService } from '../../../services/customer.service';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
+import CustomerSearchInput from '../../../components/ui/CustomerSearchInput';
 
 export default function PackageFormPage() {
   const navigate = useNavigate();
-  const [customers, setCustomers] = useState<any[]>([]);
   const [form, setForm] = useState({
-    customerId: '', description: '', weight: '',
+    customerId: '', carrierTracking: '', description: '', weight: '',
     declaredValue: '', notes: '',
   });
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    customerService.findAll({ limit: 100 }).then((r) => setCustomers(r.data));
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.customerId) return;
     setLoading(true);
     try {
       const res = await packageService.create({
@@ -41,20 +37,11 @@ export default function PackageFormPage() {
       <h1 className="text-2xl font-bold mb-6">Nuevo Paquete</h1>
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Cliente</label>
-            <select
-              value={form.customerId}
-              onChange={(e) => setForm({ ...form, customerId: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
-              required
-            >
-              <option value="">Seleccionar cliente</option>
-              {customers.map((c: any) => (
-                <option key={c._id} value={c._id}>{c.code} - {c.name} {c.lastName}</option>
-              ))}
-            </select>
-          </div>
+          <CustomerSearchInput
+            value={form.customerId}
+            onChange={(customerId) => setForm({ ...form, customerId })}
+          />
+          <Input label="Tracking del carrier (UPS/FedEx)" value={form.carrierTracking} onChange={(e) => setForm({ ...form, carrierTracking: e.target.value })} placeholder="Opcional — 1Z999AA10123456784" />
           <Input label="Descripción" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
           <Input label="Peso (lbs)" type="number" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} required />
           <Input label="Valor declarado (USD)" type="number" value={form.declaredValue} onChange={(e) => setForm({ ...form, declaredValue: e.target.value })} />

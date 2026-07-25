@@ -45,22 +45,33 @@ export default function BranchListPage() {
       <Card padding={false}>
         <Table
           headers={['Nombre', 'Código', 'Dirección', 'Teléfono', 'Estado']}
+          items={branches}
           loading={loading}
-        >
-          {branches.map((b) => (
-            <tr key={b._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-              <td className="px-4 py-3 font-medium">{b.name}</td>
-              <td className="px-4 py-3 font-mono text-sm">{b.code}</td>
-              <td className="px-4 py-3 text-sm text-gray-500">{b.address || '—'}</td>
-              <td className="px-4 py-3">{b.phone || '—'}</td>
-              <td className="px-4 py-3">
-                <Badge variant={b.isActive !== false ? 'success' : 'danger'}>
-                  {b.isActive !== false ? 'Activo' : 'Inactivo'}
-                </Badge>
-              </td>
-            </tr>
-          ))}
-        </Table>
+          renderRow={(b) => (
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Nombre</span>
+                <span className="font-medium">{b.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Código</span>
+                <span className="font-mono text-sm">{b.code}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Dirección</span>
+                <span className="text-sm text-gray-500">{b.address || '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Teléfono</span>
+                <span>{b.phone || '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Estado</span>
+                <span><Badge variant={b.isActive !== false ? 'success' : 'danger'}>{b.isActive !== false ? 'Activo' : 'Inactivo'}</Badge></span>
+              </div>
+            </div>
+          )}
+        />
       </Card>
 
       <Pagination page={meta.page} totalPages={meta.totalPages} onPageChange={load} />

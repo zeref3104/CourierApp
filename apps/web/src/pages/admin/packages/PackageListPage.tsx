@@ -69,24 +69,42 @@ export default function PackageListPage() {
       <Card padding={false}>
         <Table
           headers={['Tracking', 'Cliente', 'Peso', 'Total', 'Estado', 'Creado', 'Acciones']}
+          items={packages}
           loading={loading}
-        >
-          {packages.map((p) => (
-            <tr key={p._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-              <td className="px-4 py-3 font-mono text-sm font-medium">{p.tracking}</td>
-              <td className="px-4 py-3">{p.customerId?.name} {p.customerId?.lastName}</td>
-              <td className="px-4 py-3">{p.weight} lbs</td>
-              <td className="px-4 py-3">{formatCurrency(p.total)}</td>
-              <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-              <td className="px-4 py-3 text-gray-500 text-xs">{formatRelative(p.createdAt)}</td>
-              <td className="px-4 py-3">
-                <Link to={`/packages/${p._id}`} className="text-primary-600 hover:text-primary-700 text-sm">
-                  Ver
+          renderRow={(p) => (
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Tracking</span>
+                <span className="font-mono text-sm font-medium">{p.tracking}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Cliente</span>
+                <span>{p.customerId?.name} {p.customerId?.lastName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Peso</span>
+                <span>{p.weight} lbs</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Total</span>
+                <span>{formatCurrency(p.total)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Estado</span>
+                <span><StatusBadge status={p.status} /></span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Creado</span>
+                <span className="text-gray-500 text-xs">{formatRelative(p.createdAt)}</span>
+              </div>
+              <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                <Link to={`/packages/${p._id}`} className="text-primary-600 hover:text-primary-700 text-sm block text-right">
+                  Ver detalles
                 </Link>
-              </td>
-            </tr>
-          ))}
-        </Table>
+              </div>
+            </div>
+          )}
+        />
       </Card>
 
       <Pagination page={meta.page} totalPages={meta.totalPages} onPageChange={load} />

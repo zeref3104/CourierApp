@@ -69,24 +69,42 @@ export default function DeliveryListPage() {
       <Card padding={false}>
         <Table
           headers={['Tracking', 'Cliente', 'Dirección', 'Courier', 'Estado', 'Fecha', 'Acciones']}
+          items={deliveries}
           loading={loading}
-        >
-          {deliveries.map((d) => (
-            <tr key={d._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-              <td className="px-4 py-3 font-mono text-sm font-medium">{d.tracking || d.packageId?.tracking}</td>
-              <td className="px-4 py-3">{d.customerId?.name} {d.customerId?.lastName}</td>
-              <td className="px-4 py-3 text-sm">{d.address || d.packageId?.customerId?.address || '—'}</td>
-              <td className="px-4 py-3">{d.courierId?.name || d.assignedTo?.name || '—'}</td>
-              <td className="px-4 py-3"><StatusBadge status={d.status} /></td>
-              <td className="px-4 py-3 text-gray-500 text-sm">{formatDate(d.createdAt)}</td>
-              <td className="px-4 py-3">
-                <Link to={`/packages/${d.packageId?._id || d._id}`} className="text-primary-600 hover:text-primary-700 text-sm">
+          renderRow={(d) => (
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Tracking</span>
+                <span className="font-mono text-sm font-medium">{d.tracking || d.packageId?.tracking}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Cliente</span>
+                <span>{d.customerId?.name} {d.customerId?.lastName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Dirección</span>
+                <span className="text-sm">{d.address || d.packageId?.customerId?.address || '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Courier</span>
+                <span>{d.courierId?.name || d.assignedTo?.name || '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Estado</span>
+                <span><StatusBadge status={d.status} /></span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Fecha</span>
+                <span className="text-gray-500 text-sm">{formatDate(d.createdAt)}</span>
+              </div>
+              <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                <Link to={`/packages/${d.packageId?._id || d._id}`} className="text-primary-600 hover:text-primary-700 text-sm block text-right">
                   Ver paquete
                 </Link>
-              </td>
-            </tr>
-          ))}
-        </Table>
+              </div>
+            </div>
+          )}
+        />
       </Card>
 
       <Pagination page={meta.page} totalPages={meta.totalPages} onPageChange={load} />

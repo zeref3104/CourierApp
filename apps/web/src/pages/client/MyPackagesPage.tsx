@@ -17,17 +17,34 @@ export default function MyPackagesPage() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Mis Paquetes</h1>
       <Card padding={false}>
-        <Table headers={['Tracking', 'Descripción', 'Peso', 'Estado', 'Fecha']}>
-          {packages.map((p: any) => (
-            <tr key={p._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-              <td className="px-4 py-3 font-mono font-medium">{p.tracking}</td>
-              <td className="px-4 py-3">{p.description}</td>
-              <td className="px-4 py-3">{p.weight} lbs</td>
-              <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-              <td className="px-4 py-3 text-sm text-gray-500">{new Date(p.createdAt).toLocaleDateString()}</td>
-            </tr>
-          ))}
-        </Table>
+        <Table
+          headers={['Tracking', 'Descripción', 'Peso', 'Estado', 'Fecha']}
+          items={packages}
+          renderRow={(p) => (
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Tracking</span>
+                <span className="font-mono font-medium">{p.tracking}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Descripción</span>
+                <span>{p.description}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Peso</span>
+                <span>{p.weight} lbs</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Estado</span>
+                <span><StatusBadge status={p.status} /></span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Fecha</span>
+                <span className="text-sm text-gray-500">{new Date(p.createdAt).toLocaleDateString()}</span>
+              </div>
+            </div>
+          )}
+        />
         {packages.length === 0 && (
           <p className="text-center py-8 text-gray-400">No tienes paquetes registrados</p>
         )}

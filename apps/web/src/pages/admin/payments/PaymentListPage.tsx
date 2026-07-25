@@ -58,30 +58,44 @@ export default function PaymentListPage() {
       <Card padding={false}>
         <Table
           headers={['Recibo#', 'Cliente', 'Monto', 'Método', 'Estado', 'Fecha', 'Acciones']}
+          items={payments}
           loading={loading}
-        >
-          {payments.map((p) => (
-            <tr key={p._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-              <td className="px-4 py-3 font-medium">{p.receiptNumber || p._id.slice(-6)}</td>
-              <td className="px-4 py-3">{p.customerId?.name} {p.customerId?.lastName}</td>
-              <td className="px-4 py-3">{formatCurrency(p.amount)}</td>
-              <td className="px-4 py-3">
-                <Badge>{METHOD_LABELS[p.method] || p.method}</Badge>
-              </td>
-              <td className="px-4 py-3">
-                <Badge variant={p.status === 'completed' ? 'success' : p.status === 'pending' ? 'warning' : 'default'}>
+          renderRow={(p) => (
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Recibo</span>
+                <span className="font-medium">{p.receiptNumber || p._id.slice(-6)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Cliente</span>
+                <span>{p.customerId?.name} {p.customerId?.lastName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Monto</span>
+                <span>{formatCurrency(p.amount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Método</span>
+                <span><Badge>{METHOD_LABELS[p.method] || p.method}</Badge></span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Estado</span>
+                <span><Badge variant={p.status === 'completed' ? 'success' : p.status === 'pending' ? 'warning' : 'default'}>
                   {p.status === 'completed' ? 'Completado' : p.status === 'pending' ? 'Pendiente' : p.status}
-                </Badge>
-              </td>
-              <td className="px-4 py-3 text-gray-500 text-sm">{formatDate(p.createdAt)}</td>
-              <td className="px-4 py-3">
-                <Link to={`/payments/${p._id}`} className="text-primary-600 hover:text-primary-700 text-sm">
-                  Ver
+                </Badge></span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Fecha</span>
+                <span className="text-gray-500 text-sm">{formatDate(p.createdAt)}</span>
+              </div>
+              <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                <Link to={`/payments/${p._id}`} className="text-primary-600 hover:text-primary-700 text-sm block text-right">
+                  Ver detalles
                 </Link>
-              </td>
-            </tr>
-          ))}
-        </Table>
+              </div>
+            </div>
+          )}
+        />
       </Card>
 
       <Pagination page={meta.page} totalPages={meta.totalPages} onPageChange={load} />

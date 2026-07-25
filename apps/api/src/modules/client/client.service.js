@@ -39,7 +39,7 @@ class ClientService {
       page: Number(page),
       limit: Number(limit),
       sort: { createdAt: -1 },
-      select: 'tracking description weight status cost total createdAt deliveredAt photos',
+      select: 'tracking carrierTracking description weight status cost total createdAt deliveredAt photos',
     });
   }
 

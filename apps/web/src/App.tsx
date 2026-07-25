@@ -11,7 +11,11 @@ import ClientLayout from './components/layout/ClientLayout';
 
 // Pages
 import LoginPage from './pages/auth/LoginPage';
+import ChangePasswordPage from './pages/auth/ChangePasswordPage';
 import DashboardPage from './pages/admin/DashboardPage';
+import CompaniesPage from './pages/admin/companies/CompaniesPage';
+import CreateCompanyPage from './pages/admin/companies/CreateCompanyPage';
+import EditCompanyPage from './pages/admin/companies/EditCompanyPage';
 import CustomerListPage from './pages/admin/customers/CustomerListPage';
 import CustomerFormPage from './pages/admin/customers/CustomerFormPage';
 import CustomerDetailPage from './pages/admin/customers/CustomerDetailPage';
@@ -51,12 +55,16 @@ function App() {
       {/* Auth */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/auth/change-password" element={<ChangePasswordPage />} />
       </Route>
 
       {/* Admin */}
-      <Route element={<ProtectedRoute roles={['admin', 'cashier', 'reception', 'warehouse', 'delivery']} />}>
+      <Route element={<ProtectedRoute roles={['admin', 'superadmin', 'cashier', 'reception', 'warehouse', 'delivery']} />}>
         <Route element={<AdminLayout />}>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/companies" element={<CompaniesPage />} />
+          <Route path="/companies/new" element={<CreateCompanyPage />} />
+          <Route path="/companies/:id/edit" element={<EditCompanyPage />} />
           <Route path="/customers" element={<CustomerListPage />} />
           <Route path="/customers/new" element={<CustomerFormPage />} />
           <Route path="/customers/:id" element={<CustomerDetailPage />} />

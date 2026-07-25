@@ -4,28 +4,33 @@ const apiResponse = require('../../utils/apiResponse');
 
 const companyController = {
   create: asyncHandler(async (req, res) => {
-    const company = await companyService.create(req.body);
+    const masterConnection = req.app.locals.masterConnection;
+    const company = await companyService.create(req.body, masterConnection);
     apiResponse.created(res, company, 'Company created successfully');
   }),
 
   findAll: asyncHandler(async (req, res) => {
-    const result = await companyService.findAll(req.query);
+    const masterConnection = req.app.locals.masterConnection;
+    const result = await companyService.findAll(req.query, masterConnection);
     apiResponse.paginated(res, result.data, result.meta);
   }),
 
   findById: asyncHandler(async (req, res) => {
-    const result = await companyService.findById(req.params.id);
+    const masterConnection = req.app.locals.masterConnection;
+    const result = await companyService.findById(req.params.id, masterConnection);
     apiResponse.success(res, result);
   }),
 
   update: asyncHandler(async (req, res) => {
-    const company = await companyService.update(req.params.id, req.body);
+    const masterConnection = req.app.locals.masterConnection;
+    const company = await companyService.update(req.params.id, req.body, masterConnection);
     apiResponse.success(res, company, 'Company updated');
   }),
 
-  deactivate: asyncHandler(async (req, res) => {
-    const company = await companyService.deactivate(req.params.id);
-    apiResponse.success(res, company, 'Company deactivated');
+  delete: asyncHandler(async (req, res) => {
+    const masterConnection = req.app.locals.masterConnection;
+    const result = await companyService.delete(req.params.id, masterConnection);
+    apiResponse.success(res, result, 'Company deleted permanently');
   }),
 };
 
