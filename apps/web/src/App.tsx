@@ -35,6 +35,13 @@ import MyPackagesPage from './pages/client/MyPackagesPage';
 import ClientPackageDetailPage from './pages/client/PackageDetailPage';
 
 import ProtectedRoute from './router/ProtectedRoute';
+import { useSocket } from './hooks/useSocket';
+
+/** Internal component that activates socket.io when authenticated. */
+function SocketInit() {
+  useSocket();
+  return null;
+}
 
 function App() {
   const dispatch = useDispatch();
@@ -51,7 +58,9 @@ function App() {
   }, [theme]);
 
   return (
-    <Routes>
+    <>
+      <SocketInit />
+      <Routes>
       {/* Auth */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
@@ -93,6 +102,7 @@ function App() {
         </Route>
       </Route>
     </Routes>
+    </>
   );
 }
 

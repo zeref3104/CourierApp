@@ -4,12 +4,14 @@ interface UiState {
   theme: 'light' | 'dark';
   sidebarCollapsed: boolean;
   sidebarOpen: boolean;
+  socketConnected: boolean;
 }
 
 const initialState: UiState = {
   theme: 'light',
   sidebarCollapsed: false,
   sidebarOpen: false,
+  socketConnected: false,
 };
 
 const uiSlice = createSlice({
@@ -37,8 +39,11 @@ const uiSlice = createSlice({
     toggleSidebarMobile(state) {
       state.sidebarOpen = !state.sidebarOpen;
     },
+    setSocketConnected(state, action: PayloadAction<boolean>) {
+      state.socketConnected = action.payload;
+    },
   },
 });
 
-export const { setTheme, toggleTheme, toggleSidebar, setSidebarCollapsed, openSidebar, closeSidebar, toggleSidebarMobile } = uiSlice.actions;
+export const { setTheme, toggleTheme, toggleSidebar, setSidebarCollapsed, openSidebar, closeSidebar, toggleSidebarMobile, setSocketConnected } = uiSlice.actions;
 export default uiSlice.reducer;
