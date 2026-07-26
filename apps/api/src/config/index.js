@@ -1,5 +1,14 @@
 require('dotenv').config();
 
+const requiredSecrets = ['JWT_SECRET', 'JWT_REFRESH_SECRET'];
+const missing = requiredSecrets.filter((key) => !process.env[key]);
+if (missing.length > 0) {
+  throw new Error(
+    `FATAL: Missing required environment variables: ${missing.join(', ')}. ` +
+    'Set them in .env or environment before starting the server.'
+  );
+}
+
 const config = {
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT, 10) || 3000,
@@ -14,8 +23,8 @@ const config = {
   },
 
   jwt: {
-    secret: process.env.JWT_SECRET || 'change-me',
-    refreshSecret: process.env.JWT_REFRESH_SECRET || 'change-me-refresh',
+    secret: process.env.JWT_SECRET,
+    refreshSecret: process.env.JWT_REFRESH_SECRET,
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },

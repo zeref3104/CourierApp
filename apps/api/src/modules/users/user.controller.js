@@ -4,7 +4,7 @@ const apiResponse = require('../../utils/apiResponse');
 
 const userController = {
   create: asyncHandler(async (req, res) => {
-    const user = await userService.create(req.body, req.tenantModels);
+    const user = await userService.create(req.body, req.tenantModels, req.tenant?.plan);
     apiResponse.created(res, user, 'User created');
   }),
 

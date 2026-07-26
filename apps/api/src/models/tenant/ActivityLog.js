@@ -18,5 +18,7 @@ activityLogSchema.index({ userId: 1, createdAt: -1 });
 activityLogSchema.index({ resource: 1, resourceId: 1 });
 activityLogSchema.index({ createdAt: -1 });
 activityLogSchema.index({ action: 1 });
+// TTL: auto-delete logs older than 90 days to prevent unbounded growth
+activityLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
 
 module.exports = (connection) => connection.model('ActivityLog', activityLogSchema);

@@ -1,8 +1,13 @@
 const NotFoundException = require('../../exceptions/NotFoundException');
 const ConflictException = require('../../exceptions/ConflictException');
+const PlanEnforcer = require('../../services/planEnforcer');
 
 class UserService {
-  async create(data, models) {
+  async create(data, models, plan) {
+    // Enforce plan limit
+    const enforcer = new PlanEnforcer(plan, models);
+    await enforcer.checkMaxUsers();
+
     const existing = await models.User.findOne({ email: data.email });
     if (existing) throw new ConflictException('Email already in use');
 

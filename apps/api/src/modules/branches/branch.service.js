@@ -1,8 +1,14 @@
 const NotFoundException = require('../../exceptions/NotFoundException');
 const ConflictException = require('../../exceptions/ConflictException');
+const PlanEnforcer = require('../../services/planEnforcer');
 
 class BranchService {
-  async create(data, models) {
+  async create(data, models, plan) {
+    // Enforce plan limit
+    const enforcer = new PlanEnforcer(plan, models);
+    await enforcer.checkMultipleBranches();
+    await enforcer.checkMaxBranches();
+
     const existing = await models.Branch.findOne({ code: data.code });
     if (existing) throw new ConflictException('Branch code already exists');
 

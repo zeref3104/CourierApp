@@ -2,15 +2,17 @@ const BaseRepository = require('../../repositories/base/base.repository');
 const NotFoundException = require('../../exceptions/NotFoundException');
 const ConflictException = require('../../exceptions/ConflictException');
 const { eventBus, EVENTS } = require('../../events');
+const receiptPdfService = require('../../services/upload/receiptPdf.service');
 
 class PaymentService {
-  constructor(models) {
+  constructor(models, tenantName) {
     this.models = models;
+    this.tenantName = tenantName || 'Courier Service';
     this.repository = new BaseRepository(models.Payment);
     this.receiptRepo = new BaseRepository(models.Receipt);
   }
 
-  async create(data, userId) {
+  async create(data, userId, userBranchId) {
     const pkg = await this.models.Package.findById(data.packageId);
     if (!pkg) throw new NotFoundException('Package');
 
@@ -29,7 +31,7 @@ class PaymentService {
     const payment = await this.repository.create({
       ...data,
       processedById: userId,
-      branchId: userId?.branchId,
+      branchId: userBranchId,
       status: 'paid',
       paidAt: new Date(),
     });
@@ -48,7 +50,7 @@ class PaymentService {
     await payment.save();
 
     // Create receipt record
-    await this.receiptRepo.create({
+    const receipt = await this.receiptRepo.create({
       receiptNumber: receiptNum,
       paymentId: payment._id,
       customerId: customer._id,
@@ -65,6 +67,33 @@ class PaymentService {
       method: data.method,
       generatedById: userId,
       pdfUrl: null,
+    });
+
+    // Generate and upload receipt PDF (async, non-blocking)
+    receiptPdfService.generateReceipt({
+      receiptNumber: receiptNum,
+      companyName: this.tenantName,
+      customer: customer.toObject(),
+      package: pkg.toObject(),
+      payment: payment.toObject(),
+      items: [{
+        description: `Envío #${pkg.tracking} - ${pkg.description}`,
+        amount: pkg.cost,
+        tax: pkg.tax,
+        total: pkg.total,
+      }],
+      subtotal: pkg.cost,
+      tax: pkg.tax,
+      total: pkg.total,
+    }).then((pdfUrl) => {
+      if (pdfUrl) {
+        this.models.Receipt.findByIdAndUpdate(receipt._id, { pdfUrl }).catch((err) => {
+          const logger = require('../../logs/logger');
+          logger.error('Failed to update receipt pdfUrl: %s', err.message);
+        });
+      }
+    }).catch(() => {
+      // PDF generation is best-effort, ignore errors
     });
 
     eventBus.emit(EVENTS.PAYMENT_RECEIVED, { payment, package: pkg, userId });

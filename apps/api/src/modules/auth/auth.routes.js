@@ -2,7 +2,11 @@ const router = require('express').Router();
 const authController = require('./auth.controller');
 const auth = require('../../middlewares/auth');
 const validate = require('../../middlewares/validate');
+const { authLimiter } = require('../../middlewares/rateLimiter');
 const { loginSchema, changePasswordSchema } = require('../../validators/schemas/auth.schema');
+
+// Rate limiting for authentication endpoints (10 attempts / 15 min)
+router.use(/(login|refresh)/, authLimiter);
 
 router.post('/login', validate(loginSchema), authController.login);
 router.post('/client/login', validate(loginSchema), authController.clientLogin);

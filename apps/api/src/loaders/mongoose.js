@@ -18,6 +18,7 @@ async function initMaster() {
   connection.model('License', require('../models/master/License'));
   connection.model('SuperAdmin', require('../models/master/SuperAdmin'));
   connection.model('TenantUserIndex', require('../models/master/TenantUserIndex'));
+  connection.model('BlacklistedToken', require('../models/master/BlacklistedToken'));
 
   connection.on('error', (err) => {
     logger.error('Master DB connection error:', err);

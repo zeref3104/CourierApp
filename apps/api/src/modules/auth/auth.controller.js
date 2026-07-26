@@ -5,6 +5,79 @@ const UnauthorizedException = require('../../exceptions/UnauthorizedException');
 const TenantNotFoundException = require('../../exceptions/TenantNotFoundException');
 const logger = require('../../logs/logger');
 
+/**
+ * Resolve tenant models from request context or email.
+ * Shared helper to avoid duplication across login/clientLogin/changePassword.
+ */
+async function resolveTenantModels(req, email) {
+  // Already resolved by tenantResolver middleware
+  if (req.tenantModels) return req.tenantModels;
+
+  const masterConnection = req.app.locals.masterConnection;
+  let tenantSlug = req.headers['x-tenant-slug'];
+
+  // Auto-resolve tenant from email index if no slug provided
+  if (!tenantSlug) {
+    const TenantUserIndex = masterConnection.model('TenantUserIndex');
+    const index = await TenantUserIndex.findOne({ email, isActive: true });
+    if (index) {
+      tenantSlug = index.tenantSlug;
+    }
+  }
+
+  if (!tenantSlug) {
+    throw new TenantNotFoundException('Tenant slug required (x-tenant-slug header)');
+  }
+
+  const Company = masterConnection.model('Company');
+  const License = masterConnection.model('License');
+  const company = await Company.findOne({ slug: tenantSlug, isActive: true }).populate('planId');
+  if (!company) throw new TenantNotFoundException(tenantSlug);
+
+  const license = await License.findOne({
+    companyId: company._id,
+    status: { $in: ['active', 'trial'] },
+    endDate: { $gte: new Date() },
+  });
+  if (!license) throw new TenantNotFoundException(tenantSlug, 'License expired or inactive');
+
+  const connectionManager = require('../../services/tenant/connectionManager');
+  const tenantConnection = await connectionManager.getConnection({
+    id: company._id,
+    slug: company.slug,
+    dbName: company.databaseName,
+    plan: company.planId,
+  });
+
+  // Attach tenant context to req so downstream middlewares/handlers can use it
+  req.tenant = {
+    id: company._id,
+    slug: company.slug,
+    dbName: company.databaseName,
+    name: company.name,
+    plan: company.planId,
+    settings: company.settings,
+  };
+  req.tenantConnection = tenantConnection;
+
+  return {
+    User: tenantConnection.model('User'),
+    Role: tenantConnection.model('Role'),
+    ...(req.tenantModels || {}),
+  };
+}
+
+/** Set refresh token cookie on response */
+function setRefreshCookie(res, token) {
+  res.cookie('refreshToken', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/api/v1/auth',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+}
+
 const authController = {
   login: asyncHandler(async (req, res) => {
     const { email, password } = req.body;
@@ -18,13 +91,7 @@ const authController = {
       logger.info('[AUTH] SuperAdmin detected, using master DB login');
       const result = await authService.superadminLogin(email, password, masterConnection);
 
-      res.cookie('refreshToken', result.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        path: '/api/v1/auth',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+      setRefreshCookie(res, result.refreshToken);
 
       return apiResponse.success(res, {
         accessToken: result.accessToken,
@@ -34,54 +101,10 @@ const authController = {
     }
 
     // 2. Normal user login — resolve tenant
-    let models = req.tenantModels;
-    if (!models) {
-      let tenantSlug = req.headers['x-tenant-slug'];
+    const models = await resolveTenantModels(req, email);
+    const result = await authService.login(email, password, models, req.tenant?.slug);
 
-      // Auto-resolve tenant from email index if no slug provided
-      if (!tenantSlug) {
-        const TenantUserIndex = masterConnection.model('TenantUserIndex');
-        const index = await TenantUserIndex.findOne({ email, isActive: true });
-        if (index) {
-          tenantSlug = index.tenantSlug;
-        }
-      }
-
-      if (!tenantSlug) {
-        throw new TenantNotFoundException('Tenant slug required (x-tenant-slug header)');
-      }
-      const Company = masterConnection.model('Company');
-      const License = masterConnection.model('License');
-      const company = await Company.findOne({ slug: tenantSlug, isActive: true }).populate('planId');
-      if (!company) throw new TenantNotFoundException(tenantSlug);
-      const license = await License.findOne({
-        companyId: company._id,
-        status: { $in: ['active', 'trial'] },
-        endDate: { $gte: new Date() },
-      });
-      if (!license) throw new TenantNotFoundException(tenantSlug, 'License expired or inactive');
-      const connectionManager = require('../../services/tenant/connectionManager');
-      const tenantConnection = await connectionManager.getConnection({
-        id: company._id,
-        slug: company.slug,
-        dbName: company.databaseName,
-        plan: company.planId,
-      });
-      models = {
-        User: tenantConnection.model('User'),
-        Role: tenantConnection.model('Role'),
-      };
-    }
-
-    const result = await authService.login(email, password, models);
-
-    res.cookie('refreshToken', result.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/api/v1/auth',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    setRefreshCookie(res, result.refreshToken);
 
     apiResponse.success(res, {
       accessToken: result.accessToken,
@@ -101,59 +124,15 @@ const authController = {
       throw new UnauthorizedException('SuperAdmin cannot login as client');
     }
 
-    // Normal client login
-    let models = req.tenantModels;
-    if (!models) {
-      let tenantSlug = req.headers['x-tenant-slug'];
-
-      // Auto-resolve tenant from email index if no slug provided
-      if (!tenantSlug) {
-        const TenantUserIndex = masterConnection.model('TenantUserIndex');
-        const index = await TenantUserIndex.findOne({ email, isActive: true });
-        if (index) {
-          tenantSlug = index.tenantSlug;
-        }
-      }
-
-      if (!tenantSlug) {
-        throw new TenantNotFoundException('Tenant slug required (x-tenant-slug header)');
-      }
-      const Company = masterConnection.model('Company');
-      const License = masterConnection.model('License');
-      const company = await Company.findOne({ slug: tenantSlug, isActive: true }).populate('planId');
-      if (!company) throw new TenantNotFoundException(tenantSlug);
-      const license = await License.findOne({
-        companyId: company._id,
-        status: { $in: ['active', 'trial'] },
-        endDate: { $gte: new Date() },
-      });
-      if (!license) throw new TenantNotFoundException(tenantSlug, 'License expired or inactive');
-      const connectionManager = require('../../services/tenant/connectionManager');
-      const tenantConnection = await connectionManager.getConnection({
-        id: company._id,
-        slug: company.slug,
-        dbName: company.databaseName,
-        plan: company.planId,
-      });
-      models = {
-        User: tenantConnection.model('User'),
-        Role: tenantConnection.model('Role'),
-      };
-    }
-
-    const result = await authService.login(email, password, models);
+    // Normal client login — resolve tenant
+    const models = await resolveTenantModels(req, email);
+    const result = await authService.login(email, password, models, req.tenant?.slug);
 
     if (!result.user.isClient) {
       throw new UnauthorizedException('Invalid client credentials');
     }
 
-    res.cookie('refreshToken', result.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/api/v1/auth',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    setRefreshCookie(res, result.refreshToken);
 
     apiResponse.success(res, {
       accessToken: result.accessToken,
@@ -167,13 +146,7 @@ const authController = {
     const masterConnection = req.app.locals.masterConnection;
     const result = await authService.superadminLogin(email, password, masterConnection);
 
-    res.cookie('refreshToken', result.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/api/v1/superadmin',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    setRefreshCookie(res, result.refreshToken);
 
     apiResponse.success(res, {
       accessToken: result.accessToken,
@@ -187,15 +160,10 @@ const authController = {
       throw new UnauthorizedException('No refresh token');
     }
     const models = req.tenantModels;
-    const result = await authService.refresh(refreshToken, models);
+    const masterConnection = req.app.locals.masterConnection;
+    const result = await authService.refresh(refreshToken, models, masterConnection);
 
-    res.cookie('refreshToken', result.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/api/v1/auth',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    setRefreshCookie(res, result.refreshToken);
 
     apiResponse.success(res, { accessToken: result.accessToken }, 'Token refreshed');
   }),
@@ -203,7 +171,8 @@ const authController = {
   logout: asyncHandler(async (req, res) => {
     const refreshToken = req.cookies.refreshToken;
     const models = req.tenantModels;
-    await authService.logout(req.user._id, refreshToken, models);
+    const masterConnection = req.app.locals.masterConnection;
+    await authService.logout(req.user._id, refreshToken, models, masterConnection);
     res.clearCookie('refreshToken', { path: '/api/v1/auth' });
     apiResponse.success(res, null, 'Logged out successfully');
   }),
@@ -216,28 +185,7 @@ const authController = {
 
   changePassword: asyncHandler(async (req, res) => {
     const { currentPassword, newPassword } = req.body;
-    const masterConnection = req.app.locals.masterConnection;
-
-    // Resolve tenant from email (same as login)
-    let models = req.tenantModels;
-    if (!models) {
-      const TenantUserIndex = masterConnection.model('TenantUserIndex');
-      const index = await TenantUserIndex.findOne({ email: req.user.email, isActive: true });
-      if (!index) {
-        throw new TenantNotFoundException('User tenant not found');
-      }
-      const Company = masterConnection.model('Company');
-      const company = await Company.findOne({ slug: index.tenantSlug, isActive: true });
-      if (!company) throw new TenantNotFoundException(index.tenantSlug);
-      const connectionManager = require('../../services/tenant/connectionManager');
-      const tenantConnection = await connectionManager.getConnection({
-        id: company._id,
-        slug: company.slug,
-        dbName: company.databaseName,
-      });
-      models = { User: tenantConnection.model('User') };
-    }
-
+    const models = await resolveTenantModels(req, req.user.email);
     const result = await authService.changePassword(req.user._id, currentPassword, newPassword, models);
     apiResponse.success(res, result, 'Password changed successfully');
   }),

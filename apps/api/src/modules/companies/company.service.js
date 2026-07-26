@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const Plan = require('../../models/master/Plan');
 const License = require('../../models/master/License');
 const ConflictException = require('../../exceptions/ConflictException');
@@ -76,12 +77,15 @@ class CompanyService {
       });
     }
 
+    // Generate a random secure password
+    const defaultPassword = crypto.randomBytes(6).toString('hex'); // 12 chars, e.g. "a1b2c3d4e5f6"
+
     // Create admin user
     const User = tenantConnection.model('User');
     await User.create({
       name: 'Administrador',
       email: data.adminEmail,
-      password: 'Admin123',
+      password: defaultPassword,
       roleId: adminRole._id,
       mustChangePassword: true,
     });
@@ -96,7 +100,7 @@ class CompanyService {
 
     logger.info(`Tenant provisioned for ${company.slug}: role + admin user created`);
 
-    return { ...company.toObject(), defaultPassword: 'Admin123', adminEmail: data.adminEmail };
+    return { ...company.toObject(), defaultPassword, adminEmail: data.adminEmail };
   }
 
   async findAll(query, masterConnection) {

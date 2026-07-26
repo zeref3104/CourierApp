@@ -4,7 +4,7 @@ const apiResponse = require('../../utils/apiResponse');
 
 const branchController = {
   create: asyncHandler(async (req, res) => {
-    const branch = await branchService.create(req.body, req.tenantModels);
+    const branch = await branchService.create(req.body, req.tenantModels, req.tenant?.plan);
     apiResponse.created(res, branch, 'Branch created');
   }),
 

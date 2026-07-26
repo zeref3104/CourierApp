@@ -3,15 +3,24 @@ const NotFoundException = require('../../exceptions/NotFoundException');
 const ValidationException = require('../../exceptions/ValidationException');
 const { eventBus, EVENTS } = require('../../events');
 const { STATUS_TRANSITIONS } = require('../../models/tenant/index');
+const PlanEnforcer = require('../../services/planEnforcer');
+
+// Shared settings cache across all instances (per process)
+const settingsCache = new Map();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 class PackageService {
-  constructor(models) {
+  constructor(models, plan) {
     this.models = models;
+    this.plan = plan;
     this.repository = new BaseRepository(models.Package);
     this.historyRepo = new BaseRepository(models.PackageHistory);
   }
 
   async create(data, userId) {
+    // Enforce plan limit
+    const enforcer = new PlanEnforcer(this.plan, this.models);
+    await enforcer.checkMaxPackagesPerMonth();
     const customer = await this.models.Customer.findById(data.customerId);
     if (!customer) throw new NotFoundException('Customer');
 
@@ -38,7 +47,7 @@ class PackageService {
       receivedAt: new Date(),
     });
 
-    await this._recordHistory(pkg._id, null, 'recibido_miami', userId, 'Package created');
+    await this._recordHistory(pkg._id, null, 'recibido_miami', userId, 'Package created', pkg.branchId);
 
     eventBus.emit(EVENTS.PACKAGE_CREATED, { package: pkg, userId });
     eventBus.emit(EVENTS.PACKAGE_STATUS_CHANGED, {
@@ -146,7 +155,7 @@ class PackageService {
     }
 
     const updated = await this.repository.updateById(id, updateData);
-    await this._recordHistory(id, pkg.status, newStatus, userId, notes);
+    await this._recordHistory(id, pkg.status, newStatus, userId, notes, pkg.branchId);
 
     eventBus.emit(EVENTS.PACKAGE_STATUS_CHANGED, {
       package: updated,
@@ -179,13 +188,14 @@ class PackageService {
     return pkg.photos;
   }
 
-  async _recordHistory(packageId, fromStatus, toStatus, userId, notes) {
+  async _recordHistory(packageId, fromStatus, toStatus, userId, notes, branchId) {
     return this.historyRepo.create({
       packageId,
       fromStatus,
       toStatus,
       changedBy: userId,
       notes,
+      branchId,
     });
   }
 
@@ -202,8 +212,28 @@ class PackageService {
   }
 
   async _getSetting(key, defaultValue) {
+    const cached = settingsCache.get(key);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.value;
+    }
+
     const setting = await this.models.Setting.findOne({ key });
-    return setting ? setting.value : defaultValue;
+    const value = setting ? setting.value : defaultValue;
+
+    settingsCache.set(key, { value, timestamp: Date.now() });
+    return value;
+  }
+
+  /**
+   * Invalidate a specific setting or all settings in the cache.
+   * Call this after a setting is updated via the settings module.
+   */
+  static invalidateCache(key) {
+    if (key) {
+      settingsCache.delete(key);
+    } else {
+      settingsCache.clear();
+    }
   }
 }
 

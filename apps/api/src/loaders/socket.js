@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const logger = require('../logs/logger');
 const config = require('../config');
+const socketState = require('../services/socketState');
 
 function init({ io, app }) {
   // Store io instance for use in routes
@@ -18,6 +19,7 @@ function init({ io, app }) {
       socket.userId = decoded.sub;
       socket.tenant = decoded.tenant;
       socket.role = decoded.role;
+      socket.clientId = decoded.clientId;
       socket.branchId = decoded.branchId;
       next();
     } catch (err) {
@@ -43,10 +45,18 @@ function init({ io, app }) {
       socket.join(`tenant:${socket.tenant}`);
     }
 
+    // Join customer room (for client users receiving package events)
+    if (socket.clientId) {
+      socket.join(`customer:${socket.clientId}`);
+    }
+
     socket.on('disconnect', () => {
       logger.debug(`Socket disconnected: ${socket.id}`);
     });
   });
+
+  // Store for event handlers
+  socketState.setIO(io);
 
   logger.info('Socket.io initialized');
 }

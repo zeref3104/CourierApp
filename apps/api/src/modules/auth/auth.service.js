@@ -6,7 +6,7 @@ const NotFoundException = require('../../exceptions/NotFoundException');
 const { eventBus, EVENTS } = require('../../events');
 
 class AuthService {
-  async login(email, password, models) {
+  async login(email, password, models, tenantSlug) {
     const user = await models.User.findOne({ email, isActive: true }).select('+password');
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
@@ -45,7 +45,9 @@ class AuthService {
       roleId: user.roleId,
       branchId: user.branchId,
       permissions: role?.permissions || [],
-      tenant: user.isClient ? undefined : undefined,
+      clientId: user.clientId,
+      isClient: user.isClient || false,
+      tenant: tenantSlug,
     });
 
     eventBus.emit(EVENTS.USER_LOGIN, { userId: user._id });
@@ -63,6 +65,7 @@ class AuthService {
         permissions: role?.permissions,
         branchId: user.branchId,
         isClient: user.isClient,
+        clientId: user.clientId,
       },
     };
   }
@@ -103,8 +106,8 @@ class AuthService {
     };
   }
 
-  async refresh(refreshToken, models) {
-    if (tokenService.isBlacklisted(refreshToken)) {
+  async refresh(refreshToken, models, masterConnection) {
+    if (await tokenService.isBlacklisted(refreshToken, masterConnection)) {
       throw new UnauthorizedException('Token has been revoked');
     }
 
@@ -122,6 +125,17 @@ class AuthService {
     await user.save();
 
     const role = await models.Role.findById(user.roleId);
+
+    // Resolve tenant slug for the new JWT
+    let tenantSlug;
+    if (masterConnection) {
+      const TenantUserIndex = masterConnection.model('TenantUserIndex');
+      const index = await TenantUserIndex.findOne({ email: user.email, isActive: true });
+      if (index) {
+        tenantSlug = index.tenantSlug;
+      }
+    }
+
     const accessToken = jwtService.generateAccessToken({
       _id: user._id,
       email: user.email,
@@ -129,14 +143,17 @@ class AuthService {
       roleId: user.roleId,
       branchId: user.branchId,
       permissions: role?.permissions,
+      clientId: user.clientId,
+      isClient: user.isClient || false,
+      tenant: tenantSlug,
     });
 
     return { accessToken, refreshToken: newRefreshToken };
   }
 
-  async logout(userId, refreshToken, models) {
+  async logout(userId, refreshToken, models, masterConnection) {
     if (refreshToken) {
-      tokenService.blacklist(refreshToken);
+      await tokenService.blacklist(refreshToken, masterConnection);
     }
     await models.User.findByIdAndUpdate(userId, { refreshToken: null });
     eventBus.emit(EVENTS.USER_LOGOUT, { userId });

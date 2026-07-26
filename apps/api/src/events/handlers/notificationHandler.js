@@ -1,4 +1,21 @@
 const logger = require('../../logs/logger');
+const emailService = require('../../services/notifications/email.service');
+
+/**
+ * Look up customer email from the pkg model connection.
+ * Falls back gracefully if customer is not found.
+ */
+async function getCustomerEmail(pkg) {
+  try {
+    const customer = await pkg.model('Customer').findById(pkg.customerId).select('email name lastName');
+    if (customer) {
+      return { email: customer.email, name: `${customer.name} ${customer.lastName}` };
+    }
+  } catch {
+    // Ignore lookup failures — email is best-effort
+  }
+  return {};
+}
 
 const notificationHandler = {
   async onPackageStatusChanged(payload) {
@@ -15,7 +32,7 @@ const notificationHandler = {
 
       const title = statusLabels[toStatus] || `Estado actualizado: ${toStatus}`;
 
-      // Notify customer
+      // Notify customer (in-app)
       await pkg.model('Notification').create({
         customerId: pkg.customerId,
         type: 'package_status',
@@ -24,6 +41,12 @@ const notificationHandler = {
         data: { packageId: pkg._id, tracking: pkg.tracking, status: toStatus },
         channel: 'in_app',
       });
+
+      // Notify customer (email) — best-effort
+      const { email, name } = await getCustomerEmail(pkg);
+      if (email) {
+        await emailService.sendPackageStatusNotification(email, pkg.tracking, toStatus, name || 'Cliente');
+      }
     } catch (err) {
       logger.error('Notification handler error:', err);
     }
@@ -41,6 +64,12 @@ const notificationHandler = {
           data: { packageId: pkg._id, tracking: pkg.tracking, deliveryId: delivery._id },
           channel: 'in_app',
         });
+
+        // Notify customer (email) — best-effort
+        const { email, name } = await getCustomerEmail(pkg);
+        if (email) {
+          await emailService.sendDeliveryNotification(email, pkg.tracking, delivery.receiverName, name || 'Cliente');
+        }
       }
     } catch (err) {
       logger.error('Notification handler error:', err);

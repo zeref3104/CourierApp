@@ -1,4 +1,5 @@
 const NotFoundException = require('../../exceptions/NotFoundException');
+const PackageService = require('../packages/package.service');
 
 class SettingService {
   async findAll(models) {
@@ -16,6 +17,8 @@ class SettingService {
         { value: data[key], updatedById: userId },
         { upsert: true, new: true }
       );
+      // Invalidate cache for this setting key
+      PackageService.invalidateCache(key);
     });
     await Promise.all(promises);
     return this.findAll(models);
