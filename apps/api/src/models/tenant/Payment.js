@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const paymentSchema = new mongoose.Schema(
   {
-    packageId: { type: mongoose.Schema.Types.ObjectId, ref: 'Package', required: true },
+    packages: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Package', required: true }],
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
     amount: { type: Number, required: true, min: 0 },
     method: {
@@ -25,7 +25,7 @@ const paymentSchema = new mongoose.Schema(
 );
 
 paymentSchema.index({ receiptNumber: 1 }, { unique: true, sparse: true });
-paymentSchema.index({ packageId: 1 });
+paymentSchema.index({ packages: 1 });
 paymentSchema.index({ customerId: 1 });
 paymentSchema.index({ status: 1 });
 paymentSchema.index({ paidAt: -1 });

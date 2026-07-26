@@ -24,6 +24,7 @@ import PackageFormPage from './pages/admin/packages/PackageFormPage';
 import PackageDetailPage from './pages/admin/packages/PackageDetailPage';
 import PaymentListPage from './pages/admin/payments/PaymentListPage';
 import PaymentFormPage from './pages/admin/payments/PaymentFormPage';
+import PaymentDetailPage from './pages/admin/payments/PaymentDetailPage';
 import DeliveryListPage from './pages/admin/deliveries/DeliveryListPage';
 import UserListPage from './pages/admin/users/UserListPage';
 import UserFormPage from './pages/admin/users/UserFormPage';
@@ -83,6 +84,7 @@ function App() {
           <Route path="/packages/:id" element={<PackageDetailPage />} />
           <Route path="/payments" element={<PaymentListPage />} />
           <Route path="/payments/new" element={<PaymentFormPage />} />
+          <Route path="/payments/:id" element={<PaymentDetailPage />} />
           <Route path="/deliveries" element={<DeliveryListPage />} />
           <Route path="/users" element={<UserListPage />} />
           <Route path="/users/new" element={<UserFormPage />} />

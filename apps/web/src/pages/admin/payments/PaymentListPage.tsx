@@ -30,6 +30,8 @@ export default function PaymentListPage() {
       const res = await paymentService.findAll({ page, limit: 20, search: debouncedSearch });
       setPayments(res.data);
       if (res.meta) setMeta(res.meta);
+    } catch {
+      // ignore
     } finally {
       setLoading(false);
     }
@@ -57,7 +59,7 @@ export default function PaymentListPage() {
 
       <Card padding={false}>
         <Table
-          headers={['Recibo#', 'Cliente', 'Monto', 'Método', 'Estado', 'Fecha', 'Acciones']}
+          headers={['Recibo', 'Cliente', 'Paquetes', 'Monto', 'Método', 'Estado', 'Fecha', '']}
           items={payments}
           loading={loading}
           renderRow={(p) => (
@@ -71,6 +73,12 @@ export default function PaymentListPage() {
                 <span>{p.customerId?.name} {p.customerId?.lastName}</span>
               </div>
               <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Paquetes</span>
+                <span className="text-right">
+                  {p.packages?.map((pkg: any) => pkg.tracking || pkg).join(', ') || '—'}
+                </span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400">Monto</span>
                 <span>{formatCurrency(p.amount)}</span>
               </div>
@@ -80,8 +88,8 @@ export default function PaymentListPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400">Estado</span>
-                <span><Badge variant={p.status === 'completed' ? 'success' : p.status === 'pending' ? 'warning' : 'default'}>
-                  {p.status === 'completed' ? 'Completado' : p.status === 'pending' ? 'Pendiente' : p.status}
+                <span><Badge variant={p.status === 'paid' ? 'success' : p.status === 'pending' ? 'warning' : 'default'}>
+                  {p.status === 'paid' ? 'Pagado' : p.status === 'pending' ? 'Pendiente' : p.status}
                 </Badge></span>
               </div>
               <div className="flex justify-between">

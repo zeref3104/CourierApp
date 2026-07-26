@@ -49,7 +49,8 @@ const socketHandler = {
 
     io.to(`tenant:${payment?.tenant || ''}`).emit('payment:received', {
       paymentId: payment?._id,
-      packageId: payment?.packageId,
+      packageIds: payment?.packages,
+      packageId: payment?.packages?.[0],
       amount: payment?.amount,
       method: payment?.method,
       timestamp: new Date(),
@@ -58,7 +59,8 @@ const socketHandler = {
     if (pkg?.customerId) {
       io.to(`customer:${pkg.customerId}`).emit('payment:received', {
         paymentId: payment?._id,
-        packageId: payment?.packageId,
+        packageIds: payment?.packages,
+        packageId: payment?.packages?.[0],
         amount: payment?.amount,
         timestamp: new Date(),
       });

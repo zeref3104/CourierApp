@@ -60,11 +60,13 @@ class ReceiptPdfService {
       if (receiptData.customer?.phone) doc.text(`Teléfono: ${receiptData.customer.phone}`);
       doc.moveDown(1);
 
-      // --- Package info ---
-      doc.fontSize(11).font('Helvetica-Bold').text('Paquete:');
-      doc.fontSize(10).font('Helvetica').text(`Tracking: ${receiptData.package?.tracking || 'N/A'}`);
-      doc.text(`Descripción: ${receiptData.package?.description || 'N/A'}`);
-      doc.text(`Peso: ${receiptData.package?.weight || 0} lbs`);
+      // --- Package(s) info ---
+      const pkgList = receiptData.packages || (receiptData.package ? [receiptData.package] : []);
+      doc.fontSize(11).font('Helvetica-Bold').text(pkgList.length > 1 ? 'Paquetes:' : 'Paquete:');
+      doc.fontSize(10).font('Helvetica');
+      pkgList.forEach((p, i) => {
+        doc.text(`${i + 1}. Tracking: ${p.tracking || 'N/A'} — ${p.description || 'Sin descripción'} (${p.weight || 0} lbs)`);
+      });
       doc.moveDown(1);
 
       // --- Items table ---
@@ -89,12 +91,20 @@ class ReceiptPdfService {
 
       doc.fontSize(10).font('Helvetica');
 
-      const items = receiptData.items || [{
-        description: `Envío #${receiptData.package?.tracking || ''}`,
-        amount: receiptData.subtotal || 0,
-        tax: receiptData.tax || 0,
-        total: receiptData.total || 0,
-      }];
+      const items = receiptData.items || (Array.isArray(receiptData.packages)
+        ? receiptData.packages.map((p) => ({
+            description: `Envío #${p.tracking || ''}`,
+            amount: p.cost || 0,
+            tax: p.tax || 0,
+            total: p.total || 0,
+          }))
+        : [{
+            description: `Envío #${receiptData.package?.tracking || ''}`,
+            amount: receiptData.subtotal || 0,
+            tax: receiptData.tax || 0,
+            total: receiptData.total || 0,
+          }]
+      );
 
       items.forEach((item) => {
         const y = doc.y;

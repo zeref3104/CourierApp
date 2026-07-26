@@ -5,7 +5,7 @@ const receiptSchema = new mongoose.Schema(
     receiptNumber: { type: String, required: true, unique: true },
     paymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment', required: true },
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
-    packageId: { type: mongoose.Schema.Types.ObjectId, ref: 'Package', required: true },
+    packages: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Package', required: true }],
     items: [
       {
         description: { type: String, required: true },

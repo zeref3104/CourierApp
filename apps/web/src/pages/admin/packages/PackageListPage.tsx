@@ -47,7 +47,7 @@ export default function PackageListPage() {
       <div className="flex gap-4">
         <div className="max-w-sm flex-1">
           <Input
-            placeholder="Buscar por tracking o descripción..."
+            placeholder="Buscar por tracking, cliente, código..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             icon="🔍"

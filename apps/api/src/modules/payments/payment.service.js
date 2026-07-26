@@ -13,35 +13,46 @@ class PaymentService {
   }
 
   async create(data, userId, userBranchId) {
-    const pkg = await this.models.Package.findById(data.packageId);
-    if (!pkg) throw new NotFoundException('Package');
+    const packageIds = data.packages;
+    const packages = await this.models.Package.find({ _id: { $in: packageIds } });
+    if (packages.length !== packageIds.length) throw new NotFoundException('One or more packages not found');
 
     const customer = await this.models.Customer.findById(data.customerId);
     if (!customer) throw new NotFoundException('Customer');
 
-    // Calculate total paid so far
-    const totalPaid = await this.models.Payment.aggregate([
-      { $match: { packageId: pkg._id, status: 'paid' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } },
-    ]);
+    // Build receipt items from all packages
+    const receiptItems = [];
+    let subtotal = 0;
+    let tax = 0;
+    let totalAmount = 0;
 
-    const paidSoFar = totalPaid.length ? totalPaid[0].total : 0;
-    const newTotalPaid = paidSoFar + data.amount;
+    packages.forEach((pkg) => {
+      receiptItems.push({
+        description: `Envío #${pkg.tracking} - ${pkg.description || 'Sin descripción'}`,
+        amount: pkg.cost,
+        tax: pkg.tax,
+        total: pkg.total,
+      });
+      subtotal += pkg.cost;
+      tax += pkg.tax;
+      totalAmount += pkg.total;
+    });
 
     const payment = await this.repository.create({
       ...data,
+      packages: packageIds,
       processedById: userId,
       branchId: userBranchId,
       status: 'paid',
       paidAt: new Date(),
     });
 
-    // Update package payment status
-    if (newTotalPaid >= pkg.total) {
-      await this.models.Package.findByIdAndUpdate(pkg._id, {
-        isPaid: true,
-        paymentId: payment._id,
-      });
+    // Mark all selected packages as paid if this payment covers the total
+    if (payment.amount >= totalAmount) {
+      await this.models.Package.updateMany(
+        { _id: { $in: packageIds } },
+        { $set: { isPaid: true, paymentId: payment._id } }
+      );
     }
 
     // Generate receipt number
@@ -54,37 +65,27 @@ class PaymentService {
       receiptNumber: receiptNum,
       paymentId: payment._id,
       customerId: customer._id,
-      packageId: pkg._id,
-      items: [{
-        description: `Envío #${pkg.tracking} - ${pkg.description}`,
-        amount: pkg.cost,
-        tax: pkg.tax,
-        total: pkg.total,
-      }],
-      subtotal: pkg.cost,
-      tax: pkg.tax,
-      total: pkg.total,
+      packages: packageIds,
+      items: receiptItems,
+      subtotal,
+      tax,
+      total: totalAmount,
       method: data.method,
       generatedById: userId,
       pdfUrl: null,
     });
 
-    // Generate and upload receipt PDF (async, non-blocking)
+    // Generate PDF receipt (async, non-blocking)
     receiptPdfService.generateReceipt({
       receiptNumber: receiptNum,
       companyName: this.tenantName,
       customer: customer.toObject(),
-      package: pkg.toObject(),
+      packages: packages.map((p) => p.toObject()),
       payment: payment.toObject(),
-      items: [{
-        description: `Envío #${pkg.tracking} - ${pkg.description}`,
-        amount: pkg.cost,
-        tax: pkg.tax,
-        total: pkg.total,
-      }],
-      subtotal: pkg.cost,
-      tax: pkg.tax,
-      total: pkg.total,
+      items: receiptItems,
+      subtotal,
+      tax,
+      total: totalAmount,
     }).then((pdfUrl) => {
       if (pdfUrl) {
         this.models.Receipt.findByIdAndUpdate(receipt._id, { pdfUrl }).catch((err) => {
@@ -93,12 +94,14 @@ class PaymentService {
         });
       }
     }).catch(() => {
-      // PDF generation is best-effort, ignore errors
+      // PDF generation is best-effort
     });
 
-    eventBus.emit(EVENTS.PAYMENT_RECEIVED, { payment, package: pkg, userId });
+    packages.forEach((pkg) => {
+      eventBus.emit(EVENTS.PAYMENT_RECEIVED, { payment, package: pkg, userId });
+    });
 
-    return payment.populate(['packageId', 'customerId']);
+    return payment.populate(['packages', 'customerId']);
   }
 
   async findAll(query = {}) {
@@ -112,7 +115,7 @@ class PaymentService {
     if (status) filter.status = status;
     if (method) filter.method = method;
     if (customerId) filter.customerId = customerId;
-    if (packageId) filter.packageId = packageId;
+    if (packageId) filter.packages = { $in: [packageId] };
     if (dateFrom || dateTo) {
       filter.createdAt = {};
       if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
@@ -124,7 +127,7 @@ class PaymentService {
       limit: Number(limit),
       sort: { [sortBy]: sortOrder === 'desc' ? -1 : 1 },
       populate: [
-        { path: 'packageId', select: 'tracking total' },
+        { path: 'packages', select: 'tracking total description' },
         { path: 'customerId', select: 'name lastName code' },
         { path: 'processedById', select: 'name' },
       ],
@@ -133,7 +136,7 @@ class PaymentService {
 
   async findById(id) {
     const payment = await this.models.Payment.findById(id)
-      .populate('packageId', 'tracking description weight total status')
+      .populate('packages', 'tracking description weight cost tax total status')
       .populate('customerId', 'name lastName code document phone')
       .populate('processedById', 'name');
 
@@ -144,10 +147,19 @@ class PaymentService {
   }
 
   async getDailySummary(date) {
-    const dayStart = date ? new Date(date) : new Date();
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setHours(23, 59, 59, 999);
+    let dayStart, dayEnd;
+
+    if (date) {
+      // Build local-midnight dates from YYYY-MM-DD to avoid UTC parsing issues
+      const [y, m, d] = date.split('-').map(Number);
+      dayStart = new Date(y, m - 1, d, 0, 0, 0, 0);
+      dayEnd = new Date(y, m - 1, d, 23, 59, 59, 999);
+    } else {
+      dayStart = new Date();
+      dayStart.setHours(0, 0, 0, 0);
+      dayEnd = new Date();
+      dayEnd.setHours(23, 59, 59, 999);
+    }
 
     const payments = await this.models.Payment.find({
       paidAt: { $gte: dayStart, $lte: dayEnd },

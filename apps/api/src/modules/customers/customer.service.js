@@ -136,7 +136,7 @@ class CustomerService {
     return this.paymentRepo.findAll(filter, {
       page: Number(page),
       limit: Number(limit),
-      populate: { path: 'packageId', select: 'tracking' },
+      populate: { path: 'packages', select: 'tracking' },
       sort: { createdAt: -1 },
     });
   }

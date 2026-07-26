@@ -70,10 +70,26 @@ class PackageService {
     const filter = {};
 
     if (search) {
+      // Search customers by name, lastName, or code to include their packages
+      const matchingCustomers = await this.models.Customer.find({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { lastName: { $regex: search, $options: 'i' } },
+          { code: { $regex: search, $options: 'i' } },
+        ],
+      }).select('_id').lean();
+
+      const customerIds = matchingCustomers.map((c) => c._id);
+
       filter.$or = [
         { tracking: { $regex: search, $options: 'i' } },
+        { carrierTracking: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
       ];
+
+      if (customerIds.length > 0) {
+        filter.$or.push({ customerId: { $in: customerIds } });
+      }
     }
     if (status) filter.status = Array.isArray(status) ? { $in: status } : status;
     if (branchId) filter.branchId = branchId;
