@@ -23,6 +23,8 @@ async function auth(req, res, next) {
       branchId: decoded.branchId,
       permissions: decoded.permissions || [],
       isClient: decoded.isClient || false,
+      clientId: decoded.clientId,
+      tenant: decoded.tenant,
     };
 
     // Resolve tenant from JWT if not already resolved by tenantResolver
