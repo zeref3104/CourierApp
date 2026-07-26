@@ -1,0 +1,7 @@
+{
+  "name": "@courier/helpers",
+  "version": "1.0.0",
+  "description": "Shared helpers for Courier SaaS Platform",
+  "main": "src/index.js",
+  "private": true
+}

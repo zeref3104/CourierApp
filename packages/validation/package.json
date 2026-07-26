@@ -1,0 +1,10 @@
+{
+  "name": "@courier/validation",
+  "version": "1.0.0",
+  "description": "Shared Zod validation schemas for Courier SaaS Platform",
+  "main": "src/index.js",
+  "dependencies": {
+    "zod": "^3.22.0"
+  },
+  "private": true
+}

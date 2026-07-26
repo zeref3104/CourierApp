@@ -1,0 +1,7 @@
+{
+  "name": "@courier/constants",
+  "version": "1.0.0",
+  "description": "Shared constants for Courier SaaS Platform",
+  "main": "src/index.js",
+  "private": true
+}
