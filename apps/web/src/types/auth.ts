@@ -18,4 +18,5 @@ export interface UserProfile {
   permissions: string[];
   branchId?: string;
   isClient: boolean;
+  clientId?: string;
 }

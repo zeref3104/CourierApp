@@ -10,6 +10,7 @@ interface AuthState {
     permissions: string[];
     branchId?: string;
     isClient: boolean;
+    clientId?: string;
   } | null;
   accessToken: string | null;
   isAuthenticated: boolean;
