@@ -46,15 +46,13 @@ export default function SettingsPage() {
     try {
       const { default: api } = await import('../../../config/axios');
       // Map form fields to API key format (camelCase → snake_case for pricing)
+      const { pricePerLb, minimumPrice, taxRate, ...rest } = form;
       const payload = {
-        ...form,
-        price_per_lb: form.pricePerLb ? Number(form.pricePerLb) : undefined,
-        minimum_price: form.minimumPrice ? Number(form.minimumPrice) : undefined,
-        tax_rate: form.taxRate ? Number(form.taxRate) : undefined,
+        ...rest,
+        price_per_lb: pricePerLb ? Number(pricePerLb) : undefined,
+        minimum_price: minimumPrice ? Number(minimumPrice) : undefined,
+        tax_rate: taxRate ? Number(taxRate) : undefined,
       };
-      delete payload.pricePerLb;
-      delete payload.minimumPrice;
-      delete payload.taxRate;
       await api.patch('/settings', payload);
       localStorage.setItem('currency', form.currency);
       setSaved(true);
