@@ -6,6 +6,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { formatDateTime } from '../../../utils/formatDate';
 import { formatCurrency } from '../../../utils/formatCurrency';
+import { useLiveRefresh } from '../../../hooks/useSocketEvents';
 
 const METHOD_LABELS: Record<string, string> = {
   cash: 'Efectivo',
@@ -260,6 +261,11 @@ export default function PaymentDetailPage() {
       .then((res) => setPayment(res.data))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useLiveRefresh('socket:payments-changed', () => {
+    if (!id) return;
+    paymentService.findById(id).then((res) => setPayment(res.data)).catch(() => {});
+  });
 
   const handlePrint = useCallback(() => {
     if (!payment) return;

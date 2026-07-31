@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { customerService } from '../../../services/customer.service';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
@@ -7,18 +7,47 @@ import { Input } from '../../../components/ui/Input';
 
 export default function CustomerFormPage() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const isEdit = Boolean(id);
   const [form, setForm] = useState({
     name: '', lastName: '', document: '', phone: '',
     email: '', address: '', notes: '',
   });
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(isEdit);
+
+  useEffect(() => {
+    if (!id) return;
+    customerService
+      .findById(id)
+      .then((res) => {
+        const c = res.data;
+        setForm({
+          name: c.name || '',
+          lastName: c.lastName || '',
+          document: c.document || '',
+          phone: c.phone || '',
+          email: c.email || '',
+          address: c.address || '',
+          notes: c.notes || '',
+        });
+      })
+      .catch(() => alert('Error al cargar cliente'))
+      .finally(() => setFetching(false));
+  }, [id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await customerService.create(form);
-      navigate(`/customers/${res.data._id}`);
+      if (isEdit) {
+        await customerService.update(id!, form);
+      } else {
+        const res = await customerService.create(form);
+        navigate(`/customers/${res.data._id}`);
+        return;
+      }
+      navigate(`/customers/${id}`);
     } catch (err: any) {
       alert(err.response?.data?.error?.message || 'Error');
     } finally {
@@ -26,9 +55,15 @@ export default function CustomerFormPage() {
     }
   };
 
+  if (fetching) {
+    return (
+      <div className="text-center py-12 text-gray-500">Cargando...</div>
+    );
+  }
+
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold mb-6">Nuevo Cliente</h1>
+      <h1 className="text-2xl font-bold mb-6">{isEdit ? 'Editar Cliente' : 'Nuevo Cliente'}</h1>
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

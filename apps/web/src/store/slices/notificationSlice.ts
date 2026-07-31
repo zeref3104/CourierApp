@@ -17,11 +17,14 @@ const notificationSlice = createSlice({
     setUnreadCount(state, action: PayloadAction<number>) {
       state.unreadCount = action.payload;
     },
+    incrementUnread(state) {
+      state.unreadCount += 1;
+    },
     setNotifications(state, action: PayloadAction<any[]>) {
       state.list = action.payload;
     },
   },
 });
 
-export const { setUnreadCount, setNotifications } = notificationSlice.actions;
+export const { setUnreadCount, incrementUnread, setNotifications } = notificationSlice.actions;
 export default notificationSlice.reducer;

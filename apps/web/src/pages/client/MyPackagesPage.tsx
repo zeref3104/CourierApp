@@ -1,17 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card } from '../../components/ui/Card';
 import { Table } from '../../components/ui/Table';
 import { StatusBadge } from '../../components/ui/Badge';
+import { useLiveRefresh } from '../../hooks/useSocketEvents';
 
 export default function MyPackagesPage() {
   const [packages, setPackages] = useState<any[]>([]);
 
-  useEffect(() => {
-    // Client packages will be loaded via /client/packages endpoint
-    import('../../config/axios').then(({ default: api }) => {
-      api.get('/client/packages').then((r) => setPackages(r.data.data || []));
-    });
+  const load = useCallback(async () => {
+    const api = (await import('../../config/axios')).default;
+    api.get('/client/packages').then((r) => setPackages(r.data.data || []));
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useLiveRefresh('socket:packages-changed', load);
 
   return (
     <div className="space-y-4">

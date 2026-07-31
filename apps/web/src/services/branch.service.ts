@@ -13,7 +13,4 @@ export const branchService = {
 
   update: (id: string, data: Record<string, any>) =>
     api.patch<ApiResponse<any>>(`/branches/${id}`, data).then((r) => r.data),
-
-  toggleStatus: (id: string) =>
-    api.patch<ApiResponse<any>>(`/branches/${id}/toggle-status`).then((r) => r.data),
 };

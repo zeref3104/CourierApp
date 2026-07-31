@@ -8,6 +8,7 @@ import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Badge } from '../../../components/ui/Badge';
 import { useDebounce } from '../../../hooks/useDebounce';
+import { useLiveRefresh } from '../../../hooks/useSocketEvents';
 import { formatDate } from '../../../utils/formatDate';
 import { formatCurrency } from '../../../utils/formatCurrency';
 
@@ -38,6 +39,8 @@ export default function PaymentListPage() {
   };
 
   useEffect(() => { load(1); }, [debouncedSearch]);
+
+  useLiveRefresh('socket:payments-changed', () => load(meta.page));
 
   return (
     <div className="space-y-4">

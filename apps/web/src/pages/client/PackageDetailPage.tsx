@@ -1,19 +1,26 @@
 import { useParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card } from '../../components/ui/Card';
 import { StatusBadge } from '../../components/ui/Badge';
+import { useLiveRefresh } from '../../hooks/useSocketEvents';
 import { formatDate } from '../../utils/formatDate';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 export default function ClientPackageDetailPage() {
   const { tracking } = useParams();
   const [pkg, setPkg] = useState<any>(null);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!tracking) return;
-    import('../../config/axios').then(({ default: api }) => {
-      api.get(`/client/packages/${tracking}`).then((r) => setPkg(r.data.data));
-    });
+    const api = (await import('../../config/axios')).default;
+    api.get(`/client/packages/${tracking}`).then((r) => setPkg(r.data.data));
   }, [tracking]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useLiveRefresh('socket:packages-changed', load);
 
   if (!pkg) return <div className="text-center py-12 text-gray-400">Cargando...</div>;
 
@@ -32,11 +39,11 @@ export default function ClientPackageDetailPage() {
         </Card>
         <Card>
           <p className="text-sm text-gray-500">Costo base</p>
-          <p>${pkg.cost?.toFixed(2)}</p>
+          <p>{formatCurrency(pkg.cost || 0)}</p>
           <p className="text-sm text-gray-500 mt-4">Impuesto</p>
-          <p>${pkg.tax?.toFixed(2)}</p>
+          <p>{formatCurrency(pkg.tax || 0)}</p>
           <p className="text-sm text-gray-500 mt-4 font-semibold">Total</p>
-          <p className="text-xl font-bold">${pkg.total?.toFixed(2)}</p>
+          <p className="text-xl font-bold">{formatCurrency(pkg.total || 0)}</p>
         </Card>
       </div>
 

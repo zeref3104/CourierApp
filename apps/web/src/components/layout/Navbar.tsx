@@ -5,6 +5,7 @@ import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { logout } from '../../store/slices/authSlice';
 import { authService } from '../../services/auth.service';
 import { useNavigate } from 'react-router-dom';
+import NotificationBell from '../notifications/NotificationBell';
 
 export default function Navbar() {
   const dispatch = useDispatch();
@@ -40,6 +41,9 @@ export default function Navbar() {
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Notifications */}
+        <NotificationBell />
+
         {/* Theme toggle */}
         <button
           onClick={() => dispatch(toggleTheme())}

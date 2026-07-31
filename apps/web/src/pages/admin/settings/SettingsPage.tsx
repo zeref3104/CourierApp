@@ -11,8 +11,8 @@ const CURRENCY_INFO: Record<string, { symbol: string; name: string }> = {
 
 export default function SettingsPage() {
   const [form, setForm] = useState({
-    companyName: '', address: '', phone: '', email: '', rnc: '', currency: 'DOP',
-    pricePerLb: '', minimumPrice: '', taxRate: '',
+    company_name: '', company_address: '', company_phone: '', company_email: '', rnc: '', currency: 'DOP',
+    price_per_lb: '', minimum_price: '', tax_rate: '',
   });
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -26,15 +26,15 @@ export default function SettingsPage() {
         const currency = s.currency || 'DOP';
         localStorage.setItem('currency', currency);
         setForm({
-          companyName: s.companyName || '',
-          address: s.address || '',
-          phone: s.phone || '',
-          email: s.email || '',
+          company_name: s.company_name || '',
+          company_address: s.company_address || '',
+          company_phone: s.company_phone || '',
+          company_email: s.company_email || '',
           rnc: s.rnc || '',
           currency,
-          pricePerLb: s.price_per_lb?.toString() || '',
-          minimumPrice: s.minimum_price?.toString() || '',
-          taxRate: s.tax_rate?.toString() || '',
+          price_per_lb: s.price_per_lb?.toString() || '',
+          minimum_price: s.minimum_price?.toString() || '',
+          tax_rate: s.tax_rate?.toString() || '',
         });
       }).catch(() => {});
     });
@@ -45,13 +45,12 @@ export default function SettingsPage() {
     setLoading(true);
     try {
       const { default: api } = await import('../../../config/axios');
-      // Map form fields to API key format (camelCase → snake_case for pricing)
-      const { pricePerLb, minimumPrice, taxRate, ...rest } = form;
+      const { price_per_lb, minimum_price, tax_rate, ...rest } = form;
       const payload = {
         ...rest,
-        price_per_lb: pricePerLb ? Number(pricePerLb) : undefined,
-        minimum_price: minimumPrice ? Number(minimumPrice) : undefined,
-        tax_rate: taxRate ? Number(taxRate) : undefined,
+        price_per_lb: price_per_lb === '' ? undefined : Number(price_per_lb),
+        minimum_price: minimum_price === '' ? undefined : Number(minimum_price),
+        tax_rate: tax_rate === '' ? undefined : Number(tax_rate),
       };
       await api.patch('/settings', payload);
       localStorage.setItem('currency', form.currency);
@@ -69,10 +68,10 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-bold mb-6">Configuración</h1>
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Input label="Nombre de la empresa" value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} />
-          <Input label="Dirección" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-          <Input label="Teléfono" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <Input label="Nombre de la empresa" value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} />
+          <Input label="Dirección" value={form.company_address} onChange={(e) => setForm({ ...form, company_address: e.target.value })} />
+          <Input label="Teléfono" value={form.company_phone} onChange={(e) => setForm({ ...form, company_phone: e.target.value })} />
+          <Input label="Email" type="email" value={form.company_email} onChange={(e) => setForm({ ...form, company_email: e.target.value })} />
           <Input label="RNC" value={form.rnc} onChange={(e) => setForm({ ...form, rnc: e.target.value })} placeholder="101-00000-0" />
           <div>
             <label className="block text-sm font-medium mb-1">Moneda</label>
@@ -94,8 +93,8 @@ export default function SettingsPage() {
             type="number"
             step="0.01"
             min="0"
-            value={form.pricePerLb}
-            onChange={(e) => setForm({ ...form, pricePerLb: e.target.value })}
+            value={form.price_per_lb}
+            onChange={(e) => setForm({ ...form, price_per_lb: e.target.value })}
             placeholder={`Ej: ${currency.symbol}150`}
           />
           <Input
@@ -103,8 +102,8 @@ export default function SettingsPage() {
             type="number"
             step="0.01"
             min="0"
-            value={form.minimumPrice}
-            onChange={(e) => setForm({ ...form, minimumPrice: e.target.value })}
+            value={form.minimum_price}
+            onChange={(e) => setForm({ ...form, minimum_price: e.target.value })}
             placeholder={`Ej: ${currency.symbol}200`}
           />
           <Input
@@ -113,8 +112,8 @@ export default function SettingsPage() {
             step="0.1"
             min="0"
             max="100"
-            value={form.taxRate}
-            onChange={(e) => setForm({ ...form, taxRate: e.target.value })}
+            value={form.tax_rate}
+            onChange={(e) => setForm({ ...form, tax_rate: e.target.value })}
             placeholder="18"
           />
 

@@ -29,6 +29,7 @@ import DeliveryListPage from './pages/admin/deliveries/DeliveryListPage';
 import UserListPage from './pages/admin/users/UserListPage';
 import UserFormPage from './pages/admin/users/UserFormPage';
 import BranchListPage from './pages/admin/branches/BranchListPage';
+import BranchFormPage from './pages/admin/branches/BranchFormPage';
 import ReportsPage from './pages/admin/reports/ReportsPage';
 import SettingsPage from './pages/admin/settings/SettingsPage';
 import ClientDashboardPage from './pages/client/ClientDashboardPage';
@@ -69,7 +70,7 @@ function App() {
       </Route>
 
       {/* Admin */}
-      <Route element={<ProtectedRoute roles={['admin', 'superadmin', 'cashier', 'reception', 'warehouse', 'delivery']} />}>
+      <Route element={<ProtectedRoute roles={['admin', 'manager', 'courier', 'office', 'cashier', 'reception', 'warehouse', 'delivery', 'superadmin']} />}>
         <Route element={<AdminLayout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/companies" element={<CompaniesPage />} />
@@ -90,6 +91,8 @@ function App() {
           <Route path="/users/new" element={<UserFormPage />} />
           <Route path="/users/:id/edit" element={<UserFormPage />} />
           <Route path="/branches" element={<BranchListPage />} />
+          <Route path="/branches/new" element={<BranchFormPage />} />
+          <Route path="/branches/:id/edit" element={<BranchFormPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>

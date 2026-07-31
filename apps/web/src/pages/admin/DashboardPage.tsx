@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { dashboardService } from '../../services/dashboard.service';
 import { StatCard } from '../../components/ui/Card';
 import { Card } from '../../components/ui/Card';
+import { useLiveRefresh } from '../../hooks/useSocketEvents';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatRelative } from '../../utils/formatDate';
 
@@ -9,11 +10,22 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    dashboardService.getSummary()
-      .then((r) => setSummary(r.data))
-      .finally(() => setLoading(false));
+  const load = useCallback(async () => {
+    try {
+      const r = await dashboardService.getSummary();
+      setSummary(r.data);
+    } catch {
+      // ignore
+    }
   }, []);
+
+  useEffect(() => {
+    load().finally(() => setLoading(false));
+  }, [load]);
+
+  useLiveRefresh('socket:packages-changed', load);
+  useLiveRefresh('socket:payments-changed', load);
+  useLiveRefresh('socket:deliveries-changed', load);
 
   if (loading) {
     return (

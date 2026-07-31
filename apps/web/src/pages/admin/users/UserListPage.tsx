@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { userService } from '../../../services/user.service';
+import { roleService } from '../../../services/role.service';
 import { Card } from '../../../components/ui/Card';
 import { Table } from '../../../components/ui/Table';
 import { Pagination } from '../../../components/ui/Pagination';
@@ -12,31 +13,32 @@ import { useDebounce } from '../../../hooks/useDebounce';
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin',
   manager: 'Gerente',
-  courier: 'Courier',
+  courier: 'Repartidor',
   office: 'Oficina',
+  cashier: 'Cajero',
+  reception: 'Recepción',
+  warehouse: 'Almacén',
+  delivery: 'Entrega',
 };
-
-const ROLES = [
-  { value: '', label: 'Todos los roles' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'manager', label: 'Gerente' },
-  { value: 'courier', label: 'Courier' },
-  { value: 'office', label: 'Oficina' },
-];
 
 export default function UserListPage() {
   const [users, setUsers] = useState<any[]>([]);
+  const [roles, setRoles] = useState<any[]>([]);
   const [meta, setMeta] = useState<any>({ page: 1, totalPages: 1, total: 0 });
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const debouncedSearch = useDebounce(search, 300);
 
+  useEffect(() => {
+    roleService.findAll().then((r) => setRoles(r.data)).catch(() => {});
+  }, []);
+
   const load = async (page = 1) => {
     setLoading(true);
     try {
       const params: any = { page, limit: 20, search: debouncedSearch };
-      if (roleFilter) params.role = roleFilter;
+      if (roleFilter) params.roleId = roleFilter;
       const res = await userService.findAll(params);
       setUsers(res.data);
       if (res.meta) setMeta(res.meta);
@@ -47,9 +49,9 @@ export default function UserListPage() {
 
   useEffect(() => { load(1); }, [debouncedSearch, roleFilter]);
 
-  const handleToggleStatus = async (id: string) => {
+  const handleToggleStatus = async (user: any) => {
     try {
-      await userService.toggleStatus(id);
+      await userService.update(user._id, { isActive: user.isActive === false });
       load(meta.page);
     } catch (err: any) {
       alert(err.response?.data?.error?.message || 'Error al cambiar estado');
@@ -79,8 +81,8 @@ export default function UserListPage() {
           onChange={(e) => setRoleFilter(e.target.value)}
           className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
         >
-          {ROLES.map((r) => (
-            <option key={r.value} value={r.value}>{r.label}</option>
+          {roles.map((r: any) => (
+            <option key={r._id} value={r._id}>{r.name}</option>
           ))}
         </select>
       </div>
@@ -102,7 +104,7 @@ export default function UserListPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400">Rol</span>
-                <span><Badge>{ROLE_LABELS[u.role] || u.role}</Badge></span>
+                <span><Badge>{u.roleId?.name || ROLE_LABELS[u.role] || u.role || '—'}</Badge></span>
               </div>
               <div className="flex justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400">Sucursal</span>
@@ -113,8 +115,8 @@ export default function UserListPage() {
                 <span><Badge variant={u.isActive !== false ? 'success' : 'danger'}>{u.isActive !== false ? 'Activo' : 'Inactivo'}</Badge></span>
               </div>
               <div className="pt-2 border-t border-gray-100 dark:border-gray-700 flex gap-2 justify-end">
-                <Link to={`/users/${u._id}`} className="text-primary-600 hover:text-primary-700 text-sm">Editar</Link>
-                <button onClick={() => handleToggleStatus(u._id)} className="text-red-600 hover:text-red-700 text-sm">
+                <Link to={`/users/${u._id}/edit`} className="text-primary-600 hover:text-primary-700 text-sm">Editar</Link>
+                <button onClick={() => handleToggleStatus(u)} className="text-red-600 hover:text-red-700 text-sm">
                   {u.isActive !== false ? 'Desactivar' : 'Activar'}
                 </button>
               </div>

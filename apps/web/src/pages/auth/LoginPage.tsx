@@ -32,7 +32,9 @@ export default function LoginPage() {
     try {
       const response = await authService.login(data);
       dispatch(setCredentials(response.data));
-      if (response.data.mustChangePassword) {
+      if (response.data.user?.isClient) {
+        navigate('/client');
+      } else if (response.data.mustChangePassword) {
         navigate('/auth/change-password');
       } else {
         navigate('/');

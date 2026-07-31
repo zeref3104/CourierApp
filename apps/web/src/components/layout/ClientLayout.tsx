@@ -1,8 +1,21 @@
 import { useState } from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { authService } from '../../services/auth.service';
+import { logout } from '../../store/slices/authSlice';
 
 export default function ClientLayout() {
   const [navOpen, setNavOpen] = useState(false);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch {}
+    dispatch(logout());
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -21,6 +34,12 @@ export default function ClientLayout() {
             <div className={navOpen ? 'fixed inset-0 z-40 md:static md:inset-auto md:z-auto bg-white dark:bg-gray-800 md:bg-transparent md:flex md:flex-row flex-col md:items-center md:gap-4 p-6 md:p-0 transition-all duration-300' : 'hidden'}>
               <Link to="/client" className="text-gray-600 dark:text-gray-300 hover:text-primary-600 py-2 md:py-0 block md:inline" onClick={() => setNavOpen(false)}>Dashboard</Link>
               <Link to="/client/packages" className="text-gray-600 dark:text-gray-300 hover:text-primary-600 py-2 md:py-0 block md:inline" onClick={() => setNavOpen(false)}>Mis Paquetes</Link>
+              <button
+                onClick={handleLogout}
+                className="text-sm text-left text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 py-2 md:py-0 block md:inline"
+              >
+                Salir
+              </button>
             </div>
           </nav>
         </div>

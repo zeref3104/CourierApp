@@ -13,7 +13,4 @@ export const userService = {
 
   update: (id: string, data: Record<string, any>) =>
     api.patch<ApiResponse<any>>(`/users/${id}`, data).then((r) => r.data),
-
-  toggleStatus: (id: string) =>
-    api.patch<ApiResponse<any>>(`/users/${id}/toggle-status`).then((r) => r.data),
 };

@@ -3,7 +3,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { connectSocket, disconnectSocket, reconnectSocket } from '../services/socket';
 import { setSocketConnected } from '../store/slices/uiSlice';
-import { setUnreadCount } from '../store/slices/notificationSlice';
+import { incrementUnread } from '../store/slices/notificationSlice';
+import { emitSocketEvent } from '../services/socketEvents';
 
 /**
  * Socket lifecycle hook.
@@ -51,26 +52,31 @@ export function useSocket() {
           // --- Package events ---
           socket.on('package:created', (data) => {
             console.debug('[Socket] package:created', data);
+            emitSocketEvent('socket:packages-changed');
           });
 
           socket.on('package:status_changed', (data) => {
             console.debug('[Socket] package:status_changed', data);
+            emitSocketEvent('socket:packages-changed');
           });
 
           // --- Payment events ---
           socket.on('payment:received', (data) => {
             console.debug('[Socket] payment:received', data);
+            emitSocketEvent('socket:payments-changed');
           });
 
           // --- Delivery events ---
           socket.on('delivery:completed', (data) => {
             console.debug('[Socket] delivery:completed', data);
+            emitSocketEvent('socket:deliveries-changed');
           });
 
           // --- Notification events (from server push) ---
           socket.on('notification:new', (data) => {
             console.debug('[Socket] notification:new', data);
-            dispatch(setUnreadCount(data.unreadCount ?? 0));
+            dispatch(incrementUnread());
+            emitSocketEvent('socket:notifications-changed');
           });
         }
       }

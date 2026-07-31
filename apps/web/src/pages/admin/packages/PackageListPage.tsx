@@ -8,6 +8,7 @@ import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { StatusBadge } from '../../../components/ui/Badge';
 import { useDebounce } from '../../../hooks/useDebounce';
+import { useLiveRefresh } from '../../../hooks/useSocketEvents';
 import { formatDate, formatRelative } from '../../../utils/formatDate';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import { printPackageLabel } from '../../../utils/packageLabel';
@@ -35,6 +36,8 @@ export default function PackageListPage() {
   };
 
   useEffect(() => { load(1); }, [debouncedSearch, statusFilter]);
+
+  useLiveRefresh('socket:packages-changed', () => load(meta.page));
 
   return (
     <div className="space-y-4">

@@ -1,36 +1,48 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { branchService } from '../../../services/branch.service';
 import { Card } from '../../../components/ui/Card';
 import { Table } from '../../../components/ui/Table';
-import { Pagination } from '../../../components/ui/Pagination';
+import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Badge } from '../../../components/ui/Badge';
-import { useDebounce } from '../../../hooks/useDebounce';
 
 export default function BranchListPage() {
   const [branches, setBranches] = useState<any[]>([]);
-  const [meta, setMeta] = useState<any>({ page: 1, totalPages: 1, total: 0 });
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const debouncedSearch = useDebounce(search, 300);
 
-  const load = async (page = 1) => {
+  const load = async () => {
     setLoading(true);
     try {
-      const res = await branchService.findAll({ page, limit: 20, search: debouncedSearch });
+      const res = await branchService.findAll();
       setBranches(res.data);
-      if (res.meta) setMeta(res.meta);
+    } catch {
+      // ignore
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(1); }, [debouncedSearch]);
+  useEffect(() => { load(); }, []);
+
+  const filtered = branches.filter((b) => {
+    const q = search.toLowerCase();
+    if (!q) return true;
+    return (
+      (b.name || '').toLowerCase().includes(q) ||
+      (b.code || '').toLowerCase().includes(q) ||
+      (b.address || '').toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Sucursales</h1>
+        <Link to="/branches/new">
+          <Button>Nueva Sucursal</Button>
+        </Link>
       </div>
 
       <div className="max-w-sm">
@@ -44,8 +56,8 @@ export default function BranchListPage() {
 
       <Card padding={false}>
         <Table
-          headers={['Nombre', 'Código', 'Dirección', 'Teléfono', 'Estado']}
-          items={branches}
+          headers={['Nombre', 'Código', 'Dirección', 'Teléfono', 'Estado', 'Acciones']}
+          items={filtered}
           loading={loading}
           renderRow={(b) => (
             <div className="flex flex-col gap-2">
@@ -69,12 +81,15 @@ export default function BranchListPage() {
                 <span className="text-xs text-gray-500 dark:text-gray-400">Estado</span>
                 <span><Badge variant={b.isActive !== false ? 'success' : 'danger'}>{b.isActive !== false ? 'Activo' : 'Inactivo'}</Badge></span>
               </div>
+              <div className="pt-2 border-t border-gray-100 dark:border-gray-700 flex items-center justify-end">
+                <Link to={`/branches/${b._id}/edit`} className="text-primary-600 hover:text-primary-700 text-sm">
+                  Editar
+                </Link>
+              </div>
             </div>
           )}
         />
       </Card>
-
-      <Pagination page={meta.page} totalPages={meta.totalPages} onPageChange={load} />
     </div>
   );
 }

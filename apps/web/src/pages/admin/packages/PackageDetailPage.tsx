@@ -7,6 +7,7 @@ import { StatusBadge } from '../../../components/ui/Badge';
 import { formatDate, formatDateTime } from '../../../utils/formatDate';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import { printPackageLabel } from '../../../utils/packageLabel';
+import { useLiveRefresh } from '../../../hooks/useSocketEvents';
 
 const STATUS_TRANSITIONS: Record<string, string[]> = {
   recibido_miami: ['almacen_miami'],
@@ -34,6 +35,17 @@ export default function PackageDetailPage() {
       setHistory(historyRes.data);
     }).finally(() => setLoading(false));
   }, [id]);
+
+  useLiveRefresh('socket:packages-changed', () => {
+    if (!id) return;
+    Promise.all([
+      packageService.findById(id),
+      packageService.getHistory(id),
+    ]).then(([pkgRes, historyRes]) => {
+      setPkg(pkgRes.data);
+      setHistory(historyRes.data);
+    }).catch(() => {});
+  });
 
   if (loading) return <div className="text-center py-12 text-gray-400">Cargando...</div>;
   if (!pkg) return <div className="text-center py-12 text-gray-400">Paquete no encontrado</div>;
