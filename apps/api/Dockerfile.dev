@@ -1,8 +1,24 @@
 FROM node:20-alpine
 WORKDIR /app
-COPY package*.json ./
+
+# Copy root manifests + lockfile first so `npm ci` can leverage the layer cache.
+# Every workspace manifest must be present for the root `npm ci` to resolve all
+# workspaces declared in the root package.json (apps/*, packages/*).
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY packages/constants/package.json packages/constants/package.json
+COPY packages/helpers/package.json packages/helpers/package.json
+COPY packages/validation/package.json packages/validation/package.json
+
 RUN npm ci
-COPY . .
+
+# Copy shared packages and the API source. In dev, src + packages are
+# re-mounted as bind volumes by docker-compose for hot reload.
+COPY packages/ packages/
+COPY apps/api/ apps/api/
+
+WORKDIR /app/apps/api
 EXPOSE 3000
 ENV NODE_ENV=development
 CMD ["npm", "run", "dev"]

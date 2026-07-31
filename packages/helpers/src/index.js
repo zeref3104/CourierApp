@@ -4,23 +4,36 @@
 
 /**
  * Generate a tracking number in the format PREFIX-YYYYMMDD-NNNN.
- * @param {string} prefix - Tenant prefix (default 'CPR')
- * @param {number} sequence - Daily sequence number
+ * Pure formatter — the caller owns the atomic sequence counter.
+ * @param {{ seq: number, date: string, prefix?: string }} params
+ *   - seq: sequence number (from the per-tenant Counter)
+ *   - date: YYYYMMDD date string
+ *   - prefix: tenant prefix (default 'CPR')
  * @returns {string}
  */
-function generateTrackingNumber(prefix = 'CPR', sequence = 1) {
-  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  return `${prefix}-${date}-${String(sequence).padStart(4, '0')}`;
+function generateTrackingNumber({ seq, date, prefix = 'CPR' } = {}) {
+  return `${prefix}-${date}-${String(seq).padStart(4, '0')}`;
 }
 
 /**
  * Generate a receipt number in the format RCP-YYYYMMDD-NNNN.
- * @param {number} sequence - Daily sequence number
+ * Pure formatter — the caller owns the atomic sequence counter.
+ * @param {{ seq: number, date: string }} params
+ *   - seq: sequence number (from the per-tenant Counter)
+ *   - date: YYYYMMDD date string
  * @returns {string}
  */
-function generateReceiptNumber(sequence = 1) {
-  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  return `RCP-${date}-${String(sequence).padStart(4, '0')}`;
+function generateReceiptNumber({ seq, date } = {}) {
+  return `RCP-${date}-${String(seq).padStart(4, '0')}`;
+}
+
+/**
+ * Generate a customer code in the format CUS-NNNN.
+ * @param {number} seq - Sequence number (from the per-tenant Counter)
+ * @returns {string}
+ */
+function generateCustomerCode(seq) {
+  return `CUS-${String(seq).padStart(4, '0')}`;
 }
 
 /**
@@ -41,12 +54,18 @@ function calculatePricing(weight, pricePerLb, minimumPrice = 0, taxRate = 18) {
 
 /**
  * Format a number as currency.
+ * Locales map per-currency so e.g. USD formats as en-US, not es-DO.
  * @param {number} amount
  * @param {string} currency - Currency code (default 'DOP')
  * @returns {string}
  */
 function formatCurrency(amount, currency = 'DOP') {
-  return new Intl.NumberFormat('es-DO', {
+  const locales = {
+    DOP: 'es-DO',
+    USD: 'en-US',
+    EUR: 'de-DE',
+  };
+  return new Intl.NumberFormat(locales[currency] || 'es-DO', {
     style: 'currency',
     currency,
     minimumFractionDigits: 2,
@@ -111,6 +130,7 @@ function paginate(items, page = 1, limit = 20) {
 module.exports = {
   generateTrackingNumber,
   generateReceiptNumber,
+  generateCustomerCode,
   calculatePricing,
   formatCurrency,
   getTodayStart,

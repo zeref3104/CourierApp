@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@courier/constants": "^1.0.0",
+    "@courier/helpers": "^1.0.0",
     "@hookform/resolvers": "^3.9.0",
     "@reduxjs/toolkit": "^2.5.0",
     "axios": "^1.7.9",

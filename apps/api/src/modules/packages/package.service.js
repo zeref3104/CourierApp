@@ -3,6 +3,7 @@ const NotFoundException = require('../../exceptions/NotFoundException');
 const ValidationException = require('../../exceptions/ValidationException');
 const { eventBus, EVENTS } = require('../../events');
 const { STATUS_TRANSITIONS } = require('../../models/tenant/index');
+const { calculatePricing, generateTrackingNumber } = require('@courier/helpers');
 const PlanEnforcer = require('../../services/planEnforcer');
 const { nextSequence } = require('../../services/tenant/counter.service');
 
@@ -36,10 +37,7 @@ class PackageService {
     const minimumPrice = await this._getSetting('minimum_price', 0);
     const taxRate = await this._getSetting('tax_rate', 18);
 
-    let baseCost = data.weight * Number(pricePerLb);
-    if (baseCost < Number(minimumPrice)) baseCost = Number(minimumPrice);
-    const tax = baseCost * (Number(taxRate) / 100);
-    const total = baseCost + tax;
+    const { baseCost, tax, total } = calculatePricing(data.weight, pricePerLb, minimumPrice, taxRate);
 
     const tracking = await this._generateTracking();
 
@@ -145,12 +143,11 @@ class PackageService {
       const minimumPrice = await this._getSetting('minimum_price', 0);
       const taxRate = await this._getSetting('tax_rate', 18);
 
-      let baseCost = data.weight * Number(pricePerLb);
-      if (baseCost < Number(minimumPrice)) baseCost = Number(minimumPrice);
+      const { baseCost, tax, total } = calculatePricing(data.weight, pricePerLb, minimumPrice, taxRate);
       data.cost = baseCost;
       data.shippingCost = baseCost;
-      data.tax = baseCost * (Number(taxRate) / 100);
-      data.total = baseCost + data.tax;
+      data.tax = tax;
+      data.total = total;
     }
 
     return this.repository.updateById(id, data);
@@ -233,7 +230,7 @@ class PackageService {
       },
     });
 
-    return `${prefix}-${date}-${String(seq).padStart(4, '0')}`;
+    return generateTrackingNumber({ seq, date, prefix });
   }
 
   async _getSetting(key, defaultValue) {

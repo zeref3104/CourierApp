@@ -4,7 +4,7 @@ const authController = require('../auth/auth.controller');
 const validate = require('../../middlewares/validate');
 const auth = require('../../middlewares/auth');
 const { authorizeSuperAdmin } = require('../../middlewares/rbac');
-const { superadminLoginSchema } = require('../../validators/schemas/auth.schema');
+const { superadminLoginSchema } = require('@courier/validation');
 
 // Public superadmin login (no auth required)
 router.post('/login', validate(superadminLoginSchema), authController.superadminLogin);

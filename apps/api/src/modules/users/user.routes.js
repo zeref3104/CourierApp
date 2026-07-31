@@ -3,8 +3,7 @@ const userController = require('./user.controller');
 const auth = require('../../middlewares/auth');
 const { authorize } = require('../../middlewares/rbac');
 const validate = require('../../middlewares/validate');
-const { createUserSchema, updateUserSchema } = require('../../validators/schemas/user.schema');
-const { changePasswordSchema } = require('../../validators/schemas/auth.schema');
+const { createUserSchema, updateUserSchema, changePasswordSchema } = require('@courier/validation');
 
 router.use(auth);
 

@@ -3,7 +3,7 @@ const authController = require('./auth.controller');
 const auth = require('../../middlewares/auth');
 const validate = require('../../middlewares/validate');
 const { authLimiter } = require('../../middlewares/rateLimiter');
-const { loginSchema, changePasswordSchema } = require('../../validators/schemas/auth.schema');
+const { loginSchema, changePasswordSchema } = require('@courier/validation');
 
 // Rate limiting for authentication endpoints (10 attempts / 15 min)
 router.use(/(login|refresh)/, authLimiter);

@@ -8,16 +8,7 @@ import { formatDate, formatDateTime } from '../../../utils/formatDate';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import { printPackageLabel } from '../../../utils/packageLabel';
 import { useLiveRefresh } from '../../../hooks/useSocketEvents';
-
-const STATUS_TRANSITIONS: Record<string, string[]> = {
-  recibido_miami: ['almacen_miami'],
-  almacen_miami: ['en_transito'],
-  en_transito: ['llego_rd'],
-  llego_rd: ['almacen_rd'],
-  almacen_rd: ['disponible', 'cancelado', 'extraviado'],
-  disponible: ['en_reparto', 'entregado', 'cancelado'],
-  en_reparto: ['entregado', 'disponible'],
-};
+import { STATUS_TRANSITIONS } from '@courier/constants';
 
 export default function PackageDetailPage() {
   const { id } = useParams();

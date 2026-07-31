@@ -3,7 +3,7 @@ const branchController = require('./branch.controller');
 const auth = require('../../middlewares/auth');
 const { staffOnly, authorize } = require('../../middlewares/rbac');
 const validate = require('../../middlewares/validate');
-const { createBranchSchema, updateBranchSchema } = require('../../validators/schemas/branch.schema');
+const { createBranchSchema, updateBranchSchema } = require('@courier/validation');
 
 router.use(auth);
 router.use(staffOnly);

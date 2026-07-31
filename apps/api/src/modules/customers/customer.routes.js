@@ -3,7 +3,7 @@ const customerController = require('./customer.controller');
 const auth = require('../../middlewares/auth');
 const { staffOnly } = require('../../middlewares/rbac');
 const validate = require('../../middlewares/validate');
-const { createCustomerSchema, updateCustomerSchema } = require('../../validators/schemas/customer.schema');
+const { createCustomerSchema, updateCustomerSchema } = require('@courier/validation');
 
 router.use(auth);
 router.use(staffOnly);

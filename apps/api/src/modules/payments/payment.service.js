@@ -4,6 +4,7 @@ const ValidationException = require('../../exceptions/ValidationException');
 const { eventBus, EVENTS } = require('../../events');
 const receiptPdfService = require('../../services/upload/receiptPdf.service');
 const { nextSequence } = require('../../services/tenant/counter.service');
+const { generateReceiptNumber } = require('@courier/helpers');
 const logger = require('../../logs/logger');
 
 function toCents(value) {
@@ -402,7 +403,7 @@ class PaymentService {
       session,
     });
 
-    return `RCP-${date}-${String(seq).padStart(4, '0')}`;
+    return generateReceiptNumber({ seq, date });
   }
 }
 

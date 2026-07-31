@@ -3,7 +3,7 @@ const rateController = require('./rate.controller');
 const auth = require('../../middlewares/auth');
 const { authorize } = require('../../middlewares/rbac');
 const validate = require('../../middlewares/validate');
-const { createRateSchema, updateRateSchema } = require('../../validators/schemas/rate.schema');
+const { createRateSchema, updateRateSchema } = require('@courier/validation');
 
 router.use(auth);
 

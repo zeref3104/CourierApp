@@ -8,7 +8,7 @@ const {
   createPackageSchema,
   updatePackageSchema,
   changeStatusSchema,
-} = require('../../validators/schemas/package.schema');
+} = require('@courier/validation');
 
 router.use(auth);
 router.use(staffOnly);

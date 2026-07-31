@@ -1,0 +1,19 @@
+{
+  "name": "courier-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Courier SaaS Platform - multi-tenant MERN monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:api": "npm run dev --workspace @courier/api",
+    "dev:web": "npm run dev --workspace @courier/web",
+    "build:web": "npm run build --workspace @courier/web",
+    "test:api": "npm test --workspace @courier/api"
+  }
+}

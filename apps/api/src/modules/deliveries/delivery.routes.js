@@ -6,7 +6,7 @@ const validate = require('../../middlewares/validate');
 const {
   createDeliverySchema,
   completeDeliverySchema,
-} = require('../../validators/schemas/delivery.schema');
+} = require('@courier/validation');
 
 router.use(auth);
 router.use(staffOnly);

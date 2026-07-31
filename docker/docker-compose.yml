@@ -38,15 +38,16 @@ services:
 
   api:
     build:
-      context: ../apps/api
-      dockerfile: Dockerfile.dev
+      context: ..
+      dockerfile: apps/api/Dockerfile.dev
     container_name: courier-api
     restart: unless-stopped
     ports:
       - '3000:3000'
     volumes:
-      - ../apps/api/src:/app/src
-      - ../apps/api/logs:/app/logs
+      - ../apps/api/src:/app/apps/api/src
+      - ../apps/api/logs:/app/apps/api/logs
+      - ../packages:/app/packages
     env_file:
       - ../apps/api/.env
     environment:

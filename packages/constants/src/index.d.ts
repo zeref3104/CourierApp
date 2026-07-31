@@ -1,0 +1,23 @@
+export declare const PACKAGE_STATUSES: {
+  RECIBIDO_MIAMI: 'recibido_miami';
+  ALMACEN_MIAMI: 'almacen_miami';
+  EN_TRANSITO: 'en_transito';
+  LLEGO_RD: 'llego_rd';
+  ALMACEN_RD: 'almacen_rd';
+  DISPONIBLE: 'disponible';
+  EN_REPARTO: 'en_reparto';
+  ENTREGADO: 'entregado';
+  CANCELADO: 'cancelado';
+  EXTRAVIADO: 'extraviado';
+};
+export declare const PACKAGE_STATUS_LIST: string[];
+export declare const STATUS_TRANSITIONS: Record<string, string[]>;
+export declare const STATUS_LABELS: Record<string, string>;
+export declare const PAYMENT_METHODS: string[];
+export declare const PAYMENT_STATUSES: string[];
+export declare const DELIVERY_TYPES: string[];
+export declare const NOTIFICATION_CHANNELS: string[];
+export declare const NOTIFICATION_TYPES: string[];
+export declare const LICENSE_STATUSES: string[];
+export declare const TERMINAL_STATUSES: string[];
+export declare const ACTIVE_STATUSES: string[];

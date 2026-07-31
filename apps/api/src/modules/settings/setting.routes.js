@@ -4,7 +4,7 @@ const auth = require('../../middlewares/auth');
 const { authorize } = require('../../middlewares/rbac');
 const upload = require('../../middlewares/upload');
 const validate = require('../../middlewares/validate');
-const { updateSettingsSchema } = require('../../validators/schemas/setting.schema');
+const { updateSettingsSchema } = require('@courier/validation');
 
 router.get('/public', settingController.getPublic);
 

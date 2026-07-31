@@ -3,6 +3,7 @@ const ConflictException = require('../../exceptions/ConflictException');
 const NotFoundException = require('../../exceptions/NotFoundException');
 const { eventBus, EVENTS } = require('../../events');
 const { nextSequence } = require('../../services/tenant/counter.service');
+const { generateCustomerCode } = require('@courier/helpers');
 
 const PACKAGE_REPO_MODEL = 'Package';
 const PAYMENT_REPO_MODEL = 'Payment';
@@ -162,7 +163,7 @@ class CustomerService {
         return last ? parseInt(last.code.split('-')[1], 10) : 0;
       },
     });
-    return `CUS-${String(seq).padStart(4, '0')}`;
+    return generateCustomerCode(seq);
   }
 }
 

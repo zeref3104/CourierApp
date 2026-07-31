@@ -32,16 +32,3 @@ export interface PackageHistory {
   notes?: string;
   createdAt: string;
 }
-
-export const PACKAGE_STATUS_LABELS: Record<string, string> = {
-  recibido_miami: 'Recibido Miami',
-  almacen_miami: 'Almacén Miami',
-  en_transito: 'En Tránsito',
-  llego_rd: 'Llegó a RD',
-  almacen_rd: 'Almacén RD',
-  disponible: 'Disponible',
-  en_reparto: 'En Reparto',
-  entregado: 'Entregado',
-  cancelado: 'Cancelado',
-  extraviado: 'Extraviado',
-};

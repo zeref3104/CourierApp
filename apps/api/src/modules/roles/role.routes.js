@@ -3,7 +3,7 @@ const roleController = require('./role.controller');
 const auth = require('../../middlewares/auth');
 const { staffOnly, authorize } = require('../../middlewares/rbac');
 const validate = require('../../middlewares/validate');
-const { createRoleSchema, updateRoleSchema } = require('../../validators/schemas/role.schema');
+const { createRoleSchema, updateRoleSchema } = require('@courier/validation');
 
 router.use(auth);
 router.use(staffOnly);
