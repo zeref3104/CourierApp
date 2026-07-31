@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { packageService } from '../../../services/package.service';
 import { Card } from '../../../components/ui/Card';
+import { Button } from '../../../components/ui/Button';
 import { StatusBadge } from '../../../components/ui/Badge';
 import { formatDate, formatDateTime } from '../../../utils/formatDate';
 import { formatCurrency } from '../../../utils/formatCurrency';
+import { printPackageLabel } from '../../../utils/packageLabel';
 
 const STATUS_TRANSITIONS: Record<string, string[]> = {
   recibido_miami: ['almacen_miami'],
@@ -40,7 +42,10 @@ export default function PackageDetailPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Paquete {pkg.tracking}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Paquete {pkg.tracking}</h1>
+        <Button onClick={() => printPackageLabel(pkg)}>Imprimir etiqueta</Button>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main info */}

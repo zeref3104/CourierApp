@@ -5,10 +5,13 @@ import { Card } from '../../../components/ui/Card';
 import { Table } from '../../../components/ui/Table';
 import { Pagination } from '../../../components/ui/Pagination';
 import { Input } from '../../../components/ui/Input';
+import { Button } from '../../../components/ui/Button';
 import { StatusBadge } from '../../../components/ui/Badge';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { formatDate, formatRelative } from '../../../utils/formatDate';
 import { formatCurrency } from '../../../utils/formatCurrency';
+import { printPackageLabel } from '../../../utils/packageLabel';
+import { Printer } from 'lucide-react';
 
 export default function PackageListPage() {
   const [packages, setPackages] = useState<any[]>([]);
@@ -97,8 +100,12 @@ export default function PackageListPage() {
                 <span className="text-xs text-gray-500 dark:text-gray-400">Creado</span>
                 <span className="text-gray-500 text-xs">{formatRelative(p.createdAt)}</span>
               </div>
-              <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-                <Link to={`/packages/${p._id}`} className="text-primary-600 hover:text-primary-700 text-sm block text-right">
+              <div className="pt-2 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                <Button size="sm" variant="ghost" onClick={() => printPackageLabel(p)} className="gap-1.5">
+                  <Printer className="w-3.5 h-3.5" />
+                  Imprimir etiqueta
+                </Button>
+                <Link to={`/packages/${p._id}`} className="text-primary-600 hover:text-primary-700 text-sm">
                   Ver detalles
                 </Link>
               </div>
