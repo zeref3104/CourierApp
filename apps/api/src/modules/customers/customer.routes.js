@@ -1,10 +1,12 @@
 const router = require('express').Router();
 const customerController = require('./customer.controller');
 const auth = require('../../middlewares/auth');
+const { staffOnly } = require('../../middlewares/rbac');
 const validate = require('../../middlewares/validate');
 const { createCustomerSchema, updateCustomerSchema } = require('../../validators/schemas/customer.schema');
 
 router.use(auth);
+router.use(staffOnly);
 
 router.get('/', customerController.findAll);
 router.post('/', validate(createCustomerSchema), customerController.create);

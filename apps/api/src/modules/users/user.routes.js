@@ -9,6 +9,7 @@ const { changePasswordSchema } = require('../../validators/schemas/auth.schema')
 router.use(auth);
 
 router.get('/', authorize('admin'), userController.findAll);
+router.get('/:id', authorize('admin'), userController.findById);
 router.post('/', authorize('admin'), validate(createUserSchema), userController.create);
 router.patch('/:id', authorize('admin'), validate(updateUserSchema), userController.update);
 router.delete('/:id', authorize('admin'), userController.deactivate);

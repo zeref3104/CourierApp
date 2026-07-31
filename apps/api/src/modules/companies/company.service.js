@@ -64,18 +64,39 @@ class CompanyService {
       throw err;
     }
 
-    // Upsert Admin role
+    // Upsert canonical system roles so every tenant supports the full role set
+    const CANONICAL_ROLES = [
+      { code: 'admin', name: 'Administrador', description: 'System administrator', permissions: ['*.*'] },
+      { code: 'manager', name: 'Gerente', description: 'Branch/operations manager', permissions: [] },
+      { code: 'courier', name: 'Repartidor', description: 'Delivery courier', permissions: [] },
+      { code: 'office', name: 'Oficina', description: 'Office staff', permissions: [] },
+      { code: 'cashier', name: 'Cajero', description: 'Cashier', permissions: [] },
+      { code: 'reception', name: 'Recepción', description: 'Front desk reception', permissions: [] },
+      { code: 'warehouse', name: 'Almacén', description: 'Warehouse staff', permissions: [] },
+      { code: 'delivery', name: 'Entrega', description: 'Delivery dispatcher', permissions: [] },
+    ];
+
     const Role = tenantConnection.model('Role');
-    let adminRole = await Role.findOne({ code: 'admin' });
-    if (!adminRole) {
-      adminRole = await Role.create({
-        name: 'Admin',
-        code: 'admin',
-        description: 'System administrator',
-        permissions: ['*.*'],
-        isSystem: true,
-      });
+    for (const roleData of CANONICAL_ROLES) {
+      const existing = await Role.findOne({ code: roleData.code });
+      if (!existing) {
+        await Role.create({ ...roleData, isSystem: true });
+      }
     }
+    const adminRole = await Role.findOne({ code: 'admin' });
+
+    // Seed default settings so fresh tenants have pricing/company keys present
+    const Setting = tenantConnection.model('Setting');
+    await Setting.insertMany([
+      { key: 'company_name', value: company.name },
+      { key: 'company_address', value: '' },
+      { key: 'company_phone', value: '' },
+      { key: 'company_email', value: data.adminEmail },
+      { key: 'price_per_lb', value: 0 },
+      { key: 'minimum_price', value: 0 },
+      { key: 'tax_rate', value: 18 },
+      { key: 'currency', value: 'DOP' },
+    ]);
 
     // Generate a random secure password
     const defaultPassword = crypto.randomBytes(6).toString('hex'); // 12 chars, e.g. "a1b2c3d4e5f6"
@@ -151,7 +172,18 @@ class CompanyService {
       if (existing) throw new ConflictException('Slug already in use');
     }
 
-    Object.assign(company, data);
+    // Whitelist updatable fields — databaseName is set at provisioning and
+    // must never change (it backs the tenant connection routing).
+    const UPDATABLE_FIELDS = [
+      'name', 'slug', 'email', 'phone', 'address', 'logo',
+      'isActive', 'isSuspended', 'settings', 'planId',
+    ];
+    const updates = {};
+    UPDATABLE_FIELDS.forEach((field) => {
+      if (data[field] !== undefined) updates[field] = data[field];
+    });
+
+    Object.assign(company, updates);
     await company.save();
     return company;
   }

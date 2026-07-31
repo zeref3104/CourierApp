@@ -11,7 +11,7 @@ router.use(/(login|refresh)/, authLimiter);
 router.post('/login', validate(loginSchema), authController.login);
 router.post('/client/login', validate(loginSchema), authController.clientLogin);
 router.post('/refresh', authController.refresh);
-router.post('/logout', authController.logout);
+router.post('/logout', auth, authController.logout);
 router.get('/me', auth, authController.me);
 router.patch('/password', auth, validate(changePasswordSchema), authController.changePassword);
 

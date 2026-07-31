@@ -31,7 +31,7 @@ async function resolveTenantModels(req, email) {
 
   const Company = masterConnection.model('Company');
   const License = masterConnection.model('License');
-  const company = await Company.findOne({ slug: tenantSlug, isActive: true }).populate('planId');
+  const company = await Company.findOne({ slug: tenantSlug, isActive: true, isSuspended: { $ne: true } }).populate('planId');
   if (!company) throw new TenantNotFoundException(tenantSlug);
 
   const license = await License.findOne({
@@ -59,12 +59,24 @@ async function resolveTenantModels(req, email) {
     settings: company.settings,
   };
   req.tenantConnection = tenantConnection;
-
-  return {
+  req.tenantModels = {
     User: tenantConnection.model('User'),
     Role: tenantConnection.model('Role'),
-    ...(req.tenantModels || {}),
+    Customer: tenantConnection.model('Customer'),
+    Package: tenantConnection.model('Package'),
+    PackageHistory: tenantConnection.model('PackageHistory'),
+    Branch: tenantConnection.model('Branch'),
+    Payment: tenantConnection.model('Payment'),
+    Receipt: tenantConnection.model('Receipt'),
+    Delivery: tenantConnection.model('Delivery'),
+    Rate: tenantConnection.model('Rate'),
+    Notification: tenantConnection.model('Notification'),
+    ActivityLog: tenantConnection.model('ActivityLog'),
+    Setting: tenantConnection.model('Setting'),
+    Counter: tenantConnection.model('Counter'),
   };
+
+  return req.tenantModels;
 }
 
 /** Set refresh token cookie on response */
@@ -159,9 +171,8 @@ const authController = {
     if (!refreshToken) {
       throw new UnauthorizedException('No refresh token');
     }
-    const models = req.tenantModels;
     const masterConnection = req.app.locals.masterConnection;
-    const result = await authService.refresh(refreshToken, models, masterConnection);
+    const result = await authService.refresh(refreshToken, masterConnection);
 
     setRefreshCookie(res, result.refreshToken);
 
@@ -170,9 +181,10 @@ const authController = {
 
   logout: asyncHandler(async (req, res) => {
     const refreshToken = req.cookies.refreshToken;
-    const models = req.tenantModels;
     const masterConnection = req.app.locals.masterConnection;
-    await authService.logout(req.user._id, refreshToken, models, masterConnection);
+    await authService.logout(req.user._id, refreshToken, req.tenantModels, masterConnection, {
+      isSuperAdmin: req.user.isSuperAdmin,
+    });
     res.clearCookie('refreshToken', { path: '/api/v1/auth' });
     apiResponse.success(res, null, 'Logged out successfully');
   }),

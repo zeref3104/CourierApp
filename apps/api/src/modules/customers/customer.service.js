@@ -2,6 +2,7 @@ const BaseRepository = require('../../repositories/base/base.repository');
 const ConflictException = require('../../exceptions/ConflictException');
 const NotFoundException = require('../../exceptions/NotFoundException');
 const { eventBus, EVENTS } = require('../../events');
+const { nextSequence } = require('../../services/tenant/counter.service');
 
 const PACKAGE_REPO_MODEL = 'Package';
 const PAYMENT_REPO_MODEL = 'Payment';
@@ -62,15 +63,28 @@ class CustomerService {
 
     if (!customer) throw new NotFoundException('Customer');
 
-    const packages = await this.models.Package.find({ customerId: id });
-    const payments = await this.models.Payment.find({ customerId: id });
+    // Compute the summary with counts + $sum aggregations instead of loading
+    // every package/payment document into memory (N+1 / unbounded read).
+    const [totalPackages, pendingPackages, deliveredPackages, paidTotals, pendingTotals] = await Promise.all([
+      this.models.Package.countDocuments({ customerId: id }),
+      this.models.Package.countDocuments({ customerId: id, status: { $nin: ['entregado', 'cancelado', 'extraviado'] } }),
+      this.models.Package.countDocuments({ customerId: id, status: 'entregado' }),
+      this.models.Payment.aggregate([
+        { $match: { customerId: id, status: 'paid' } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]),
+      this.models.Payment.aggregate([
+        { $match: { customerId: id, status: 'pending' } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]),
+    ]);
 
     const summary = {
-      totalPackages: packages.length,
-      pendingPackages: packages.filter((p) => !['entregado', 'cancelado', 'extraviado'].includes(p.status)).length,
-      deliveredPackages: packages.filter((p) => p.status === 'entregado').length,
-      totalPaid: payments.filter((p) => p.status === 'paid').reduce((s, p) => s + p.amount, 0),
-      pendingBalance: payments.filter((p) => p.status === 'pending').reduce((s, p) => s + p.amount, 0),
+      totalPackages,
+      pendingPackages,
+      deliveredPackages,
+      totalPaid: paidTotals.length > 0 ? paidTotals[0].total : 0,
+      pendingBalance: pendingTotals.length > 0 ? pendingTotals[0].total : 0,
     };
 
     return { ...customer.toObject(), ...summary };
@@ -142,9 +156,13 @@ class CustomerService {
   }
 
   async _generateCode() {
-    const last = await this.models.Customer.findOne({}).sort({ createdAt: -1 }).select('code');
-    const num = last ? parseInt(last.code.split('-')[1], 10) + 1 : 1;
-    return `CUS-${String(num).padStart(4, '0')}`;
+    const seq = await nextSequence(this.models, 'customer-code', {
+      seedFrom: async () => {
+        const last = await this.models.Customer.findOne({}).sort({ createdAt: -1 }).select('code');
+        return last ? parseInt(last.code.split('-')[1], 10) : 0;
+      },
+    });
+    return `CUS-${String(seq).padStart(4, '0')}`;
   }
 }
 

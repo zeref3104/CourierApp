@@ -42,7 +42,6 @@ const packageSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-packageSchema.index({ tracking: 1 }, { unique: true });
 packageSchema.index({ carrierTracking: 1 });
 packageSchema.index({ customerId: 1, status: 1 });
 packageSchema.index({ status: 1, branchId: 1 });

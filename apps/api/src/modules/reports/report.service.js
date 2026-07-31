@@ -1,3 +1,21 @@
+const ValidationException = require('../../exceptions/ValidationException');
+
+function assertValidDate(value, field) {
+  if (value === undefined || value === null || value === '') return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+    throw new ValidationException([{
+      field,
+      message: `${field} must be a valid date in YYYY-MM-DD format`,
+    }]);
+  }
+  if (Number.isNaN(new Date(`${value}T00:00:00.000Z`).getTime())) {
+    throw new ValidationException([{
+      field,
+      message: `${field} is not a valid date`,
+    }]);
+  }
+}
+
 class ReportService {
   constructor(models) {
     this.models = models;
@@ -5,6 +23,8 @@ class ReportService {
 
   async getCustomers(query = {}) {
     const { dateFrom, dateTo, branchId } = query;
+    assertValidDate(dateFrom, 'dateFrom');
+    assertValidDate(dateTo, 'dateTo');
     const filter = {};
     if (dateFrom || dateTo) {
       filter.createdAt = {};
@@ -32,6 +52,8 @@ class ReportService {
 
   async getPackages(query = {}) {
     const { dateFrom, dateTo, status, branchId } = query;
+    assertValidDate(dateFrom, 'dateFrom');
+    assertValidDate(dateTo, 'dateTo');
     const filter = {};
     if (dateFrom || dateTo) {
       filter.createdAt = {};
@@ -67,6 +89,8 @@ class ReportService {
 
   async getIncome(query = {}) {
     const { dateFrom, dateTo, period = 'daily' } = query;
+    assertValidDate(dateFrom, 'dateFrom');
+    assertValidDate(dateTo, 'dateTo');
     const filter = { status: 'paid' };
     if (dateFrom || dateTo) {
       filter.paidAt = {};
@@ -106,6 +130,8 @@ class ReportService {
 
   async getDeliveries(query = {}) {
     const { dateFrom, dateTo, type, deliveredById } = query;
+    assertValidDate(dateFrom, 'dateFrom');
+    assertValidDate(dateTo, 'dateTo');
     const filter = {};
     if (dateFrom || dateTo) {
       filter.deliveredAt = {};

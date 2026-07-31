@@ -6,7 +6,11 @@ class ConnectionManager {
     this.connections = new Map();
     this.MAX_CONNECTIONS = 100;
     this.CONNECTION_TTL_MS = 30 * 60 * 1000;
+    this.CONNECTION_READY_TIMEOUT_MS = 10000;
+    this.SWEEP_INTERVAL_MS = 10 * 60 * 1000;
+    this.SWEEP_MIN_CONNECTIONS = 20;
     this.cleanupInterval = null;
+    this.sweepInterval = null;
   }
 
   async getConnection(tenant) {
@@ -22,11 +26,31 @@ class ConnectionManager {
       `${process.env.MONGO_URI}/${tenant.dbName}`,
       {
         maxPoolSize: 10,
-        minPoolSize: 2,
+        // minPoolSize 0: with 100 tenants a minPoolSize of 2 would keep ~200
+        // sockets open even when those tenants are completely idle.
+        minPoolSize: 0,
         serverSelectionTimeoutMS: 5000,
         heartbeatFrequencyMS: 10000,
       }
     );
+
+    // Wait for the connection to actually become ready (bounded) so the first
+    // query on it never hits the mongoose bufferTimeout. If mongo is down or
+    // slow, fail fast and close the half-open connection instead of leaking it.
+    try {
+      await Promise.race([
+        connection.asPromise(),
+        new Promise((_, reject) => {
+          setTimeout(
+            () => reject(new Error(`Timed out waiting for connection to ready (${tenant.dbName})`)),
+            this.CONNECTION_READY_TIMEOUT_MS
+          );
+        }),
+      ]);
+    } catch (err) {
+      await connection.close().catch(() => {});
+      throw err;
+    }
 
     this._loadTenantModels(connection);
 
@@ -44,7 +68,35 @@ class ConnectionManager {
       logger.error(`Connection error for ${tenant.dbName}:`, err);
     });
 
+    this._startSweep();
+
     return connection;
+  }
+
+  _startSweep() {
+    if (this.sweepInterval) return;
+    this.sweepInterval = setInterval(() => this._sweepIdleConnections(), this.SWEEP_INTERVAL_MS);
+    // Do not keep the process alive solely for the sweep.
+    this.sweepInterval.unref();
+  }
+
+  _sweepIdleConnections() {
+    // Conservative pruning: only prune when many tenant connections are pooled.
+    // With a small tenant count, closing connections that the auth refresh flow
+    // (auth.service _findSession) relies on would only add cold-start latency.
+    // Only connections idle past CONNECTION_TTL_MS are closed, so a short-lived
+    // in-flight transaction is never interrupted. The master connection lives
+    // in app.locals (not in this map), so it is never touched here.
+    if (this.connections.size <= this.SWEEP_MIN_CONNECTIONS) return;
+
+    const now = Date.now();
+    for (const [dbName, entry] of this.connections) {
+      if (now - entry.lastUsed >= this.CONNECTION_TTL_MS) {
+        logger.warn(`Closing idle connection (TTL exceeded): ${dbName}`);
+        entry.connection.close().catch(() => {});
+        this.connections.delete(dbName);
+      }
+    }
   }
 
   _loadTenantModels(connection) {
@@ -61,6 +113,7 @@ class ConnectionManager {
     require('../../models/tenant/Notification')(connection);
     require('../../models/tenant/ActivityLog')(connection);
     require('../../models/tenant/Setting')(connection);
+    require('../../models/tenant/Counter')(connection);
   }
 
   _evictLRU() {
@@ -103,6 +156,10 @@ class ConnectionManager {
 
   async closeAll() {
     logger.info(`Closing all connections (${this.connections.size})...`);
+    if (this.sweepInterval) {
+      clearInterval(this.sweepInterval);
+      this.sweepInterval = null;
+    }
     const promises = [];
     for (const [name, entry] of this.connections) {
       promises.push(entry.connection.close().catch(() => {}));
@@ -121,6 +178,13 @@ class ConnectionManager {
         uptimeMs: Date.now() - entry.createdAt,
       })),
     };
+  }
+
+  listConnections() {
+    return Array.from(this.connections.entries()).map(([dbName, entry]) => ({
+      dbName,
+      connection: entry.connection,
+    }));
   }
 }
 

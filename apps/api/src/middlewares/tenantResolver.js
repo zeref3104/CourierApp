@@ -39,6 +39,9 @@ async function tenantResolver(req, res, next) {
 
     const slug = req.tenantSlug || tenantSlug;
 
+    // Store resolved slug so downstream middlewares can verify JWT tenant consistency
+    req.tenantSlug = slug;
+
     // Get Master DB connection from app locals
     const masterConnection = req.app.locals.masterConnection;
     if (!masterConnection) {
@@ -48,8 +51,8 @@ async function tenantResolver(req, res, next) {
     const Company = masterConnection.model('Company');
     const License = masterConnection.model('License');
 
-    // Find company
-    const company = await Company.findOne({ slug, isActive: true }).populate('planId');
+    // Find company (suspended companies must not resolve as active tenants)
+    const company = await Company.findOne({ slug, isActive: true, isSuspended: { $ne: true } }).populate('planId');
     if (!company) {
       return next(new TenantNotFoundException(slug));
     }
@@ -96,6 +99,7 @@ async function tenantResolver(req, res, next) {
       Notification: tenantConnection.model('Notification'),
       ActivityLog: tenantConnection.model('ActivityLog'),
       Setting: tenantConnection.model('Setting'),
+      Counter: tenantConnection.model('Counter'),
     };
 
     next();

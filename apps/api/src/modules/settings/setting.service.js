@@ -17,8 +17,8 @@ class SettingService {
         { value: data[key], updatedById: userId },
         { upsert: true, new: true }
       );
-      // Invalidate cache for this setting key
-      PackageService.invalidateCache(key);
+      // Invalidate this tenant's cache entry for the setting key
+      PackageService.invalidateCache(models.Setting.db.name, key);
     });
     await Promise.all(promises);
     return this.findAll(models);

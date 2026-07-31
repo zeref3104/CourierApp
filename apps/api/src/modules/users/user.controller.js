@@ -13,6 +13,11 @@ const userController = {
     apiResponse.paginated(res, result.data, result.meta);
   }),
 
+  findById: asyncHandler(async (req, res) => {
+    const user = await userService.findById(req.params.id, req.tenantModels);
+    apiResponse.success(res, user, 'User found');
+  }),
+
   update: asyncHandler(async (req, res) => {
     const user = await userService.update(req.params.id, req.body, req.tenantModels);
     apiResponse.success(res, user, 'User updated');

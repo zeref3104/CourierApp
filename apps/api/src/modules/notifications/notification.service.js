@@ -43,15 +43,6 @@ class NotificationService {
     const count = await this.repository.count({ userId, isRead: false });
     return { count };
   }
-
-  // For client panel
-  async findClientNotifications(customerId, query = {}) {
-    const { page = 1, limit = 20 } = query;
-    return this.repository.findAll(
-      { customerId, channel: 'in_app' },
-      { page: Number(page), limit: Number(limit), sort: { createdAt: -1 } }
-    );
-  }
 }
 
 module.exports = NotificationService;

@@ -40,8 +40,9 @@ function init({ io, app }) {
       socket.join(`branch:${socket.branchId}`);
     }
 
-    // Join tenant room
-    if (socket.tenant) {
+    // Join tenant room (staff only — client sockets must not receive
+    // tenant-wide payloads containing other customers' package data)
+    if (socket.tenant && !socket.clientId) {
       socket.join(`tenant:${socket.tenant}`);
     }
 

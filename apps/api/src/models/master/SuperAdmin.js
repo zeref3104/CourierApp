@@ -8,6 +8,7 @@ const superAdminSchema = new mongoose.Schema(
     password: { type: String, required: true, minlength: 8, select: false },
     role: { type: String, default: 'superadmin', enum: ['superadmin'] },
     isActive: { type: Boolean, default: true },
+    refreshToken: { type: String, select: false },
     lastLogin: { type: Date },
   },
   { timestamps: true }

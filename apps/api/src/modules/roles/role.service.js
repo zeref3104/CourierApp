@@ -20,7 +20,15 @@ class RoleService {
       throw new ConflictException('Cannot change code of system role');
     }
 
-    Object.assign(role, data);
+    // Whitelist updatable fields — never blindly assign arbitrary body keys
+    // (prevents callers from setting isSystem, _id, etc.)
+    const UPDATABLE_FIELDS = ['name', 'code', 'description', 'permissions'];
+    const updates = {};
+    UPDATABLE_FIELDS.forEach((field) => {
+      if (data[field] !== undefined) updates[field] = data[field];
+    });
+
+    Object.assign(role, updates);
     return role.save();
   }
 

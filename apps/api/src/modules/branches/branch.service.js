@@ -42,11 +42,19 @@ class BranchService {
       if (pkgCount > 0) throw new ConflictException('Cannot change code: branch has packages');
     }
 
-    if (data.isMainBranch) {
+    // Whitelist updatable fields — never blindly assign arbitrary body keys
+    // (prevents setting _id, manager object, etc.)
+    const UPDATABLE_FIELDS = ['name', 'code', 'address', 'phone', 'email', 'isActive', 'isMainBranch', 'managerId'];
+    const updates = {};
+    UPDATABLE_FIELDS.forEach((field) => {
+      if (data[field] !== undefined) updates[field] = data[field];
+    });
+
+    if (updates.isMainBranch) {
       await models.Branch.updateMany({ _id: { $ne: id } }, { isMainBranch: false });
     }
 
-    Object.assign(branch, data);
+    Object.assign(branch, updates);
     return branch.save();
   }
 

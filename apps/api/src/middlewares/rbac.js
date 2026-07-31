@@ -29,4 +29,24 @@ function can(permission) {
   };
 }
 
-module.exports = { authorize, can };
+function authorizeSuperAdmin(req, res, next) {
+  if (!req.user) {
+    return next(new ForbiddenException('Authentication required'));
+  }
+  if (req.user.isSuperAdmin !== true) {
+    return next(new ForbiddenException('Superadmin access required'));
+  }
+  next();
+}
+
+function staffOnly(req, res, next) {
+  if (!req.user) {
+    return next(new ForbiddenException('Authentication required'));
+  }
+  if (req.user.isClient) {
+    return next(new ForbiddenException('Client accounts cannot access staff resources'));
+  }
+  next();
+}
+
+module.exports = { authorize, can, authorizeSuperAdmin, staffOnly };

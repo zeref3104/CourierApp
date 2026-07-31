@@ -33,6 +33,7 @@ function registerListeners() {
 
   eventBus.on(EVENTS.PAYMENT_RECEIVED, (payload) => {
     activityLogHandler.onPaymentReceived(payload);
+    notificationHandler.onPaymentReceived(payload);
     socketHandler.onPaymentReceived(payload);
   });
 
@@ -44,6 +45,7 @@ function registerListeners() {
 
   eventBus.on(EVENTS.PACKAGE_CREATED, (payload) => {
     activityLogHandler.onPackageCreated(payload);
+    notificationHandler.onPackageCreated(payload);
     socketHandler.onPackageCreated(payload);
   });
 

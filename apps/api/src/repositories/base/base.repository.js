@@ -9,16 +9,20 @@ class BaseRepository {
 
   async findAll(query = {}, options = {}) {
     const { page = 1, limit = 20, sort = { createdAt: -1 }, select, populate } = options;
-    const skip = (page - 1) * limit;
+    // Clamp pagination: page >= 1 and limit <= 100 so a single request can
+    // never force an unbounded scan of a tenant collection.
+    const safePage = Math.max(1, Number(page) || 1);
+    const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
+    const skip = (safePage - 1) * safeLimit;
 
     const [data, total] = await Promise.all([
-      this.model.find(query).sort(sort).skip(skip).limit(Number(limit)).select(select).populate(populate),
+      this.model.find(query).sort(sort).skip(skip).limit(safeLimit).select(select).populate(populate),
       this.model.countDocuments(query),
     ]);
 
     return {
       data,
-      meta: { page: Number(page), limit: Number(limit), total, totalPages: Math.ceil(total / limit) },
+      meta: { page: safePage, limit: safeLimit, total, totalPages: Math.ceil(total / safeLimit) },
     };
   }
 

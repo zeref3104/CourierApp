@@ -4,25 +4,33 @@ const ValidationException = require('../../exceptions/ValidationException');
 const { eventBus, EVENTS } = require('../../events');
 const { STATUS_TRANSITIONS } = require('../../models/tenant/index');
 const PlanEnforcer = require('../../services/planEnforcer');
+const { nextSequence } = require('../../services/tenant/counter.service');
 
-// Shared settings cache across all instances (per process)
+// Shared settings cache across all instances (per process).
+// Keyed by dbName + setting key so tenants never read each other's settings.
 const settingsCache = new Map();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 class PackageService {
-  constructor(models, plan) {
+  constructor(models, plan, tenantSlug) {
     this.models = models;
     this.plan = plan;
+    this.tenantSlug = tenantSlug;
+    this.dbName = models.Setting.db.name;
     this.repository = new BaseRepository(models.Package);
     this.historyRepo = new BaseRepository(models.PackageHistory);
   }
 
-  async create(data, userId) {
+  async create(data, userId, branchId) {
     // Enforce plan limit
     const enforcer = new PlanEnforcer(this.plan, this.models);
     await enforcer.checkMaxPackagesPerMonth();
     const customer = await this.models.Customer.findById(data.customerId);
     if (!customer) throw new NotFoundException('Customer');
+
+    // Assign the user's branch when the caller doesn't provide one, so every
+    // package gets a branch (branch-scoped queries and labels depend on it).
+    if (!data.branchId && branchId) data.branchId = branchId;
 
     const pricePerLb = await this._getSetting('price_per_lb', 0);
     const minimumPrice = await this._getSetting('minimum_price', 0);
@@ -49,13 +57,9 @@ class PackageService {
 
     await this._recordHistory(pkg._id, null, 'recibido_miami', userId, 'Package created', pkg.branchId);
 
-    eventBus.emit(EVENTS.PACKAGE_CREATED, { package: pkg, userId });
-    eventBus.emit(EVENTS.PACKAGE_STATUS_CHANGED, {
-      package: pkg,
-      fromStatus: null,
-      toStatus: 'recibido_miami',
-      userId,
-    });
+    // Emit PACKAGE_CREATED only — the initial status is part of creation, so a
+    // separate PACKAGE_STATUS_CHANGED here would duplicate notifications/emails.
+    eventBus.emit(EVENTS.PACKAGE_CREATED, { package: pkg, userId, tenantSlug: this.tenantSlug });
 
     return pkg;
   }
@@ -179,6 +183,7 @@ class PackageService {
       toStatus: newStatus,
       userId,
       notes,
+      tenantSlug: this.tenantSlug,
     });
 
     return updated;
@@ -218,17 +223,22 @@ class PackageService {
   async _generateTracking() {
     const prefix = process.env.TENANT_PREFIX || 'CPR';
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
 
-    const count = await this.repository.count({ createdAt: { $gte: todayStart } });
-    const sequence = String(count + 1).padStart(4, '0');
+    const seq = await nextSequence(this.models, `tracking-${prefix}-${date}`, {
+      seedFrom: async () => {
+        const doc = await this.models.Package.findOne({
+          tracking: new RegExp(`^${prefix}-${date}-`),
+        }).sort({ tracking: -1 }).select('tracking');
+        return doc ? parseInt(doc.tracking.split('-').pop(), 10) : 0;
+      },
+    });
 
-    return `${prefix}-${date}-${sequence}`;
+    return `${prefix}-${date}-${String(seq).padStart(4, '0')}`;
   }
 
   async _getSetting(key, defaultValue) {
-    const cached = settingsCache.get(key);
+    const cacheKey = `${this.dbName}:${key}`;
+    const cached = settingsCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
       return cached.value;
     }
@@ -236,17 +246,22 @@ class PackageService {
     const setting = await this.models.Setting.findOne({ key });
     const value = setting ? setting.value : defaultValue;
 
-    settingsCache.set(key, { value, timestamp: Date.now() });
+    settingsCache.set(cacheKey, { value, timestamp: Date.now() });
     return value;
   }
 
   /**
-   * Invalidate a specific setting or all settings in the cache.
+   * Invalidate a specific setting, all settings for a tenant, or everything.
    * Call this after a setting is updated via the settings module.
    */
-  static invalidateCache(key) {
+  static invalidateCache(dbName, key) {
+    const prefix = dbName ? `${dbName}:` : '';
     if (key) {
-      settingsCache.delete(key);
+      settingsCache.delete(prefix + key);
+    } else if (dbName) {
+      for (const k of settingsCache.keys()) {
+        if (k.startsWith(prefix)) settingsCache.delete(k);
+      }
     } else {
       settingsCache.clear();
     }

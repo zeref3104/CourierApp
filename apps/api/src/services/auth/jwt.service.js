@@ -13,6 +13,8 @@ class JwtService {
         branchId: user.branchId,
         permissions: user.permissions,
         isClient: user.isClient || false,
+        clientId: user.clientId,
+        isSuperAdmin: user.isSuperAdmin || false,
         tenant: user.tenant,
       },
       config.jwt.secret,

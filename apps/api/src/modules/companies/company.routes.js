@@ -3,13 +3,15 @@ const companyController = require('./company.controller');
 const authController = require('../auth/auth.controller');
 const validate = require('../../middlewares/validate');
 const auth = require('../../middlewares/auth');
+const { authorizeSuperAdmin } = require('../../middlewares/rbac');
 const { superadminLoginSchema } = require('../../validators/schemas/auth.schema');
 
 // Public superadmin login (no auth required)
 router.post('/login', validate(superadminLoginSchema), authController.superadminLogin);
 
-// All other superadmin routes need auth
+// All other superadmin routes need auth + superadmin role check
 router.use(auth);
+router.use(authorizeSuperAdmin);
 
 router.get('/companies', companyController.findAll);
 router.post('/companies', companyController.create);

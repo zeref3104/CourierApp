@@ -50,6 +50,14 @@ class UserService {
     };
   }
 
+  async findById(id, models) {
+    const user = await models.User.findById(id)
+      .populate('roleId', 'name code')
+      .populate('branchId', 'name');
+    if (!user) throw new NotFoundException('User');
+    return user;
+  }
+
   async update(id, data, models) {
     const user = await models.User.findById(id);
     if (!user) throw new NotFoundException('User');
@@ -59,7 +67,15 @@ class UserService {
       if (existing) throw new ConflictException('Email already in use');
     }
 
-    Object.assign(user, data);
+    // Whitelist updatable fields — never blindly assign arbitrary body keys
+    // (prevents setting isClient, clientId, _id, refreshToken, etc.)
+    const UPDATABLE_FIELDS = ['name', 'lastName', 'email', 'phone', 'roleId', 'branchId', 'isActive'];
+    const updates = {};
+    UPDATABLE_FIELDS.forEach((field) => {
+      if (data[field] !== undefined) updates[field] = data[field];
+    });
+
+    Object.assign(user, updates);
     return user.save();
   }
 

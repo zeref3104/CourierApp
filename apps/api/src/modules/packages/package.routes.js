@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const packageController = require('./package.controller');
 const auth = require('../../middlewares/auth');
+const { staffOnly } = require('../../middlewares/rbac');
 const validate = require('../../middlewares/validate');
 const upload = require('../../middlewares/upload');
 const {
@@ -10,6 +11,7 @@ const {
 } = require('../../validators/schemas/package.schema');
 
 router.use(auth);
+router.use(staffOnly);
 
 router.get('/', packageController.findAll);
 router.post('/', validate(createPackageSchema), packageController.create);

@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const UnauthorizedException = require('../exceptions/UnauthorizedException');
+const ForbiddenException = require('../exceptions/ForbiddenException');
 const TenantNotFoundException = require('../exceptions/TenantNotFoundException');
 const connectionManager = require('../services/tenant/connectionManager');
 
@@ -24,6 +25,7 @@ async function auth(req, res, next) {
       permissions: decoded.permissions || [],
       isClient: decoded.isClient || false,
       clientId: decoded.clientId,
+      isSuperAdmin: decoded.isSuperAdmin || false,
       tenant: decoded.tenant,
     };
 
@@ -35,8 +37,9 @@ async function auth(req, res, next) {
         const index = await TenantUserIndex.findOne({ email: req.user.email, isActive: true });
         if (index) {
           const Company = masterConnection.model('Company');
-          const company = await Company.findOne({ slug: index.tenantSlug, isActive: true });
+          const company = await Company.findOne({ slug: index.tenantSlug, isActive: true, isSuspended: { $ne: true } });
           if (company) {
+            req.tenantSlug = company.slug;
             req.tenant = {
               id: company._id,
               slug: company.slug,
@@ -60,6 +63,7 @@ async function auth(req, res, next) {
               Notification: tenantConnection.model('Notification'),
               ActivityLog: tenantConnection.model('ActivityLog'),
               Setting: tenantConnection.model('Setting'),
+              Counter: tenantConnection.model('Counter'),
             };
           } else {
             // Stale index — company no longer exists, clean up
@@ -67,6 +71,12 @@ async function auth(req, res, next) {
           }
         }
       }
+    }
+
+    // Cross-tenant spoofing guard: the JWT was issued for req.user.tenant; the
+    // request must be targeting the same tenant (resolved by tenantResolver).
+    if (req.user.tenant && req.tenantSlug && req.user.tenant !== req.tenantSlug) {
+      return next(new ForbiddenException('Tenant mismatch'));
     }
 
     next();
