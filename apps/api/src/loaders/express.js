@@ -2,6 +2,7 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const compression = require('compression');
 const morganMiddleware = require('../logs/morgan');
 const { globalLimiter } = require('../middlewares/rateLimiter');
 const config = require('../config');
@@ -14,6 +15,9 @@ function init({ app }) {
   }));
   app.use(cors(config.cors));
   app.use(cookieParser());
+
+  // Response compression
+  app.use(compression());
 
   // Body parsing
   app.use(express.json({ limit: '10mb' }));

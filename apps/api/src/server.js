@@ -37,6 +37,20 @@ async function start() {
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
+
+  // Unhandled promise rejections: log and keep serving — a single stray
+  // rejection (e.g. best-effort notification/socket emits) must not take the
+  // whole API down.
+  process.on('unhandledRejection', (reason) => {
+    logger.error('Unhandled promise rejection:', reason);
+  });
+
+  // Uncaught synchronous exceptions leave the process in an undefined state —
+  // log the details and exit so the orchestrator/process manager can restart.
+  process.on('uncaughtException', (err) => {
+    logger.error('Uncaught exception:', err);
+    process.exit(1);
+  });
 }
 
 start().catch((err) => {

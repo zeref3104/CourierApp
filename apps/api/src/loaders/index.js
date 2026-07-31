@@ -44,6 +44,9 @@ module.exports.init = async ({ app, io }) => {
   // 6. Routes
   app.use('/api/v1', require('../routes/v1'));
 
+  // 6b. 404 for unmatched routes (after all routes, before the error handler)
+  app.use(require('../middlewares/notFound'));
+
   // 7. Event listeners
   registerListeners();
 
