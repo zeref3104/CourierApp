@@ -3,7 +3,7 @@ import { initReactI18next } from 'react-i18next';
 import es from './locales/es.json';
 import en from './locales/en.json';
 import fr from './locales/fr.json';
-import { isSupportedLanguage } from './languages';
+import { isSupportedLanguage, LANGUAGE_LOCALES, type SupportedLanguage } from './languages';
 
 const storedLanguage = localStorage.getItem('language');
 const initialLanguage = isSupportedLanguage(storedLanguage) ? storedLanguage : 'es';
@@ -33,5 +33,28 @@ const syncDocumentLang = (lng: string) => {
 };
 syncDocumentLang(i18n.language);
 i18n.on('languageChanged', syncDocumentLang);
+
+export { SUPPORTED_LANGUAGES, isSupportedLanguage } from './languages';
+export type { SupportedLanguage } from './languages';
+
+/** Active language, falling back to the Spanish default when not resolvable. */
+export function getActiveLanguage(): SupportedLanguage {
+  return isSupportedLanguage(i18n.language) ? i18n.language : 'es';
+}
+
+/** Locale of the active language (consumed by formatDate/formatCurrency/formatNumber). */
+export function getActiveLocale(): string {
+  return LANGUAGE_LOCALES[getActiveLanguage()];
+}
+
+/**
+ * Persist the language choice and switch the active language.
+ * Unknown values are ignored so a stale localStorage entry cannot break the app.
+ */
+export function setLanguage(lng: string): void {
+  if (!isSupportedLanguage(lng)) return;
+  localStorage.setItem('language', lng);
+  void i18n.changeLanguage(lng);
+}
 
 export default i18n;

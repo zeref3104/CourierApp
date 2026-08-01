@@ -1,6 +1,6 @@
 import { format, formatDistanceToNow } from 'date-fns';
 import { es, enUS, fr } from 'date-fns/locale';
-import { getActiveLanguage } from '../i18n/languages';
+import { getActiveLanguage } from '../i18n';
 
 // Locale map resolved at call time (design D5): the active language drives the
 // date-fns locale, so switching language re-renders dates without any cache.

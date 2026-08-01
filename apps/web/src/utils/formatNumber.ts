@@ -1,4 +1,4 @@
-import { getActiveLocale } from '../i18n/languages';
+import { getActiveLocale } from '../i18n';
 
 /**
  * Format a plain number using the active language's locale (e.g. 1234.5

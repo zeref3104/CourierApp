@@ -3,7 +3,7 @@ import {
   SUPPORTED_LANGUAGES,
   setLanguage,
   type SupportedLanguage,
-} from '../../i18n/languages';
+} from '../../i18n';
 
 const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
   es: 'Español',

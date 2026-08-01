@@ -1,4 +1,4 @@
-import { getActiveLocale } from '../i18n/languages';
+import { getActiveLocale } from '../i18n';
 
 /**
  * Format a number as currency.
