@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { companyService, Plan, CreateCompanyData } from '../../../services/company.service';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
@@ -7,6 +8,7 @@ import { Input } from '../../../components/ui/Input';
 
 export default function CreateCompanyPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [form, setForm] = useState({
     name: '',
@@ -41,7 +43,7 @@ export default function CreateCompanyPage() {
     setError('');
 
     if (!form.planId) {
-      setError('Debes seleccionar un plan');
+      setError(t('companies.selectPlanRequired'));
       return;
     }
 
@@ -61,7 +63,7 @@ export default function CreateCompanyPage() {
         defaultPassword: res.data.defaultPassword || '123456',
       });
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || err.response?.data?.message || 'Error al crear empresa');
+      setError(err.response?.data?.error?.message || err.response?.data?.message || t('companies.createError'));
     } finally {
       setLoading(false);
     }
@@ -74,36 +76,36 @@ export default function CreateCompanyPage() {
           onClick={() => navigate('/companies')}
           className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
         >
-          ← Volver
+          {t('common.back')}
         </button>
-        <h1 className="text-2xl font-bold">Nueva Empresa</h1>
+        <h1 className="text-2xl font-bold">{t('companies.new')}</h1>
       </div>
 
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            label="Nombre de la empresa"
+            label={t('companies.name')}
             value={form.name}
             onChange={(e) => handleNameChange(e.target.value)}
-            placeholder="Ej: Envios Rápidos SRL"
+            placeholder={t('companies.namePlaceholder')}
             required
           />
 
           <Input
-            label="Slug (identificador único)"
+            label={t('companies.slugLabel')}
             value={form.slug}
             onChange={(e) => setForm({ ...form, slug: e.target.value })}
-            placeholder="Ej: envios-rapidos"
+            placeholder={t('companies.slugPlaceholder')}
             required
           />
           {form.slug && (
             <p className="text-xs text-gray-500 -mt-3">
-              Base de datos: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">courier_{form.slug}</code>
+              {t('companies.databaseLabel')} <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">courier_{form.slug}</code>
             </p>
           )}
 
           <Input
-            label="Email de la empresa"
+            label={t('companies.companyEmail')}
             type="email"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -112,7 +114,7 @@ export default function CreateCompanyPage() {
           />
 
           <Input
-            label="Email del administrador"
+            label={t('companies.adminEmail')}
             type="email"
             value={form.adminEmail}
             onChange={(e) => setForm({ ...form, adminEmail: e.target.value })}
@@ -121,41 +123,41 @@ export default function CreateCompanyPage() {
           />
 
           <Input
-            label="Teléfono"
+            label={t('common.phone')}
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
             placeholder="809-555-5555"
           />
 
           <div>
-            <label className="block text-sm font-medium mb-1">Plan</label>
+            <label className="block text-sm font-medium mb-1">{t('companies.plan')}</label>
             <select
               value={form.planId}
               onChange={(e) => setForm({ ...form, planId: e.target.value })}
               className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               required
             >
-              <option value="">Seleccionar plan</option>
+              <option value="">{t('companies.selectPlan')}</option>
               {plans.map((p) => (
                 <option key={p._id} value={p._id}>
-                  {p.name} {p.price > 0 ? `- $${p.price}/mes` : '(Gratuito)'}
+                  {p.name} {p.price > 0 ? t('companies.perMonth', { price: p.price }) : t('companies.free')}
                 </option>
               ))}
             </select>
             {plans.length === 0 && (
               <p className="text-xs text-yellow-600 mt-1">
-                No hay planes disponibles. Crea uno primero.
+                {t('companies.noPlans')}
               </p>
             )}
           </div>
 
           {success && (
             <div className="bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-400 text-sm p-4 rounded-lg space-y-2">
-              <p className="font-semibold">✅ Empresa creada exitosamente</p>
-              <p>Administrador: <strong>{success.adminEmail}</strong></p>
-              <p>Contraseña temporal: <strong className="font-mono">{success.defaultPassword}</strong></p>
+              <p className="font-semibold">✅ {t('companies.createdSuccess')}</p>
+              <p>{t('companies.adminLabel')} <strong>{success.adminEmail}</strong></p>
+              <p>{t('companies.tempPasswordLabel')} <strong className="font-mono">{success.defaultPassword}</strong></p>
               <p className="text-xs text-green-600 dark:text-green-500">
-                El administrador deberá cambiar la contraseña al iniciar sesión.
+                {t('companies.mustChangePasswordHint')}
               </p>
             </div>
           )}
@@ -169,15 +171,15 @@ export default function CreateCompanyPage() {
           <div className="flex gap-3 pt-2">
             {success ? (
               <Button type="button" onClick={() => navigate('/companies')}>
-                Volver a empresas
+                {t('companies.backToList')}
               </Button>
             ) : (
               <>
                 <Button type="submit" loading={loading} disabled={plans.length === 0}>
-                  Crear Empresa
+                  {t('companies.create')}
                 </Button>
                 <Button type="button" variant="secondary" onClick={() => navigate('/companies')}>
-                  Cancelar
+                  {t('common.cancel')}
                 </Button>
               </>
             )}
