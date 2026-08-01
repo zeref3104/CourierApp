@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { deliveryService } from '../../../services/delivery.service';
 import { packageService } from '../../../services/package.service';
 import { Card } from '../../../components/ui/Card';
@@ -12,20 +13,17 @@ import { useDebounce } from '../../../hooks/useDebounce';
 import { useLiveRefresh } from '../../../hooks/useSocketEvents';
 import { formatDate } from '../../../utils/formatDate';
 
-const DELIVERY_TYPES = [
-  { value: '', label: 'Todos los tipos' },
-  { value: 'branch', label: 'Sucursal' },
-  { value: 'home', label: 'A domicilio' },
-];
-
 const AVAILABLE_PACKAGE_STATUSES = ['disponible', 'en_reparto'];
 
-const TYPE_LABELS: Record<string, string> = {
-  branch: 'Sucursal',
-  home: 'A domicilio',
+// Maps delivery type values to their translation key suffix.
+const TYPE_KEY_SUFFIX: Record<string, string> = {
+  branch: 'Branch',
+  home: 'Home',
 };
 
 export default function DeliveryListPage() {
+  const { t } = useTranslation();
+  const typeLabel = (type: string) => t(`deliveries.type${TYPE_KEY_SUFFIX[type] || ''}`, { defaultValue: type });
   const [deliveries, setDeliveries] = useState<any[]>([]);
   const [meta, setMeta] = useState<any>({ page: 1, totalPages: 1, total: 0 });
   const [search, setSearch] = useState('');
@@ -55,13 +53,13 @@ export default function DeliveryListPage() {
   useLiveRefresh('socket:deliveries-changed', () => load(meta.page));
 
   const handleComplete = async (d: any) => {
-    if (!window.confirm(`¿Completar la entrega del paquete ${d.packageId?.tracking || ''}?`)) return;
+    if (!window.confirm(t('confirm.completeDelivery', { tracking: d.packageId?.tracking || '' }))) return;
     setCompletingId(d._id);
     try {
       await deliveryService.complete(d._id);
       load(meta.page);
     } catch (err: any) {
-      alert(err.response?.data?.error?.message || 'Error al completar la entrega');
+      alert(err.response?.data?.error?.message || t('deliveries.completeError'));
     } finally {
       setCompletingId('');
     }
@@ -70,14 +68,14 @@ export default function DeliveryListPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Entregas</h1>
-        <Button onClick={() => setCreateOpen(true)}>Nueva Entrega</Button>
+        <h1 className="text-2xl font-bold">{t('deliveries.title')}</h1>
+        <Button onClick={() => setCreateOpen(true)}>{t('deliveries.new')}</Button>
       </div>
 
       <div className="flex gap-4">
         <div className="max-w-sm flex-1">
           <Input
-            placeholder="Buscar por tracking, destinatario o dirección..."
+            placeholder={t('deliveries.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             icon="🔍"
@@ -88,52 +86,53 @@ export default function DeliveryListPage() {
           onChange={(e) => setTypeFilter(e.target.value)}
           className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
         >
-          {DELIVERY_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>{t.label}</option>
-          ))}
+          <option value="">{t('deliveries.allTypes')}</option>
+          <option value="branch">{t('deliveries.typeBranch')}</option>
+          <option value="home">{t('deliveries.typeHome')}</option>
         </select>
       </div>
 
       <Card padding={false}>
         <Table
-          headers={['Tracking', 'Cliente', 'Dirección', 'Entregado por', 'Tipo', 'Fecha', 'Acciones']}
+          headers={[t('packages.tracking'), t('common.customer'), t('common.address'), t('deliveries.deliveredBy'), t('deliveries.type'), t('common.date'), t('common.actions')]}
           items={deliveries}
           loading={loading}
           renderRow={(d) => (
             <div className="flex flex-col gap-2">
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Tracking</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('packages.tracking')}</span>
                 <span className="font-mono text-sm font-medium">{d.packageId?.tracking || '—'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Cliente</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('common.customer')}</span>
                 <span>{d.packageId?.customerId ? `${d.packageId.customerId.name || ''} ${d.packageId.customerId.lastName || ''}`.trim() : '—'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Dirección</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('common.address')}</span>
                 <span className="text-sm">{d.address || '—'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Entregado por</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('deliveries.deliveredBy')}</span>
                 <span>{d.deliveredById?.name || '—'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Tipo</span>
-                <span><Badge variant={d.type === 'branch' ? 'info' : 'default'}>{TYPE_LABELS[d.type] || d.type}</Badge></span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('deliveries.type')}</span>
+                <span><Badge variant={d.type === 'branch' ? 'info' : 'default'}>{typeLabel(d.type)}</Badge></span>
               </div>
+
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Fecha</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('common.date')}</span>
                 <span className="text-gray-500 text-sm">{formatDate(d.deliveredAt || d.createdAt)}</span>
               </div>
               <div className="pt-2 border-t border-gray-100 dark:border-gray-700 flex items-center justify-end gap-3">
                 <Link to={`/packages/${d.packageId?._id || d._id}`} className="text-primary-600 hover:text-primary-700 text-sm">
-                  Ver paquete
+                  {t('deliveries.viewPackage')}
                 </Link>
                 {d.type === 'branch' || d.packageId?.status === 'entregado' ? (
-                  <span className="text-xs font-medium text-green-600 dark:text-green-400">Completada</span>
+                  <span className="text-xs font-medium text-green-600 dark:text-green-400">{t('deliveries.completed')}</span>
                 ) : (
                   <Button size="sm" onClick={() => handleComplete(d)} loading={completingId === d._id}>
-                    Completar
+                    {t('deliveries.complete')}
                   </Button>
                 )}
               </div>
@@ -158,6 +157,7 @@ export default function DeliveryListPage() {
 }
 
 function DeliveryCreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
@@ -215,7 +215,7 @@ function DeliveryCreateModal({ onClose, onCreated }: { onClose: () => void; onCr
       });
       onCreated();
     } catch (err: any) {
-      alert(err.response?.data?.error?.message || 'Error al registrar la entrega');
+      alert(err.response?.data?.error?.message || t('deliveries.registerError'));
     } finally {
       setSubmitting(false);
     }
@@ -225,20 +225,20 @@ function DeliveryCreateModal({ onClose, onCreated }: { onClose: () => void; onCr
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-800 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-          <h2 className="text-lg font-semibold">Nueva Entrega</h2>
+          <h2 className="text-lg font-semibold">{t('deliveries.new')}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 p-6">
-          {/* Paquete — search + dropdown */}
+          {/* Package — search + dropdown */}
           <div ref={searchRef}>
-            <label className="block text-sm font-medium mb-1">Paquete</label>
+            <label className="block text-sm font-medium mb-1">{t('common.package')}</label>
             {selectedPackage ? (
               <div className="flex items-center justify-between rounded-lg border border-primary-500 bg-primary-50 dark:bg-primary-900/20 px-3 py-2 text-sm">
                 <div>
                   <span className="font-mono font-medium">{selectedPackage.tracking}</span>
                   <span className="ml-2 text-gray-500">{selectedPackage.description}</span>
-                  <span className="ml-2 text-gray-400">{selectedPackage.status}</span>
+                  <span className="ml-2 text-gray-400">{t(`status.${selectedPackage.status}`, { defaultValue: selectedPackage.status })}</span>
                 </div>
                 <button
                   type="button"
@@ -255,7 +255,7 @@ function DeliveryCreateModal({ onClose, onCreated }: { onClose: () => void; onCr
             ) : (
               <div className="relative">
                 <Input
-                  placeholder="Buscar por tracking o descripción..."
+                  placeholder={t('deliveries.packageSearchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -267,9 +267,9 @@ function DeliveryCreateModal({ onClose, onCreated }: { onClose: () => void; onCr
                 {showDropdown && debouncedSearch.length >= 2 && (
                   <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                     {searching ? (
-                      <div className="px-3 py-2 text-sm text-gray-400">Buscando...</div>
+                      <div className="px-3 py-2 text-sm text-gray-400">{t('common.searching')}</div>
                     ) : searchResults.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-gray-400">Sin resultados</div>
+                      <div className="px-3 py-2 text-sm text-gray-400">{t('common.noResults')}</div>
                     ) : (
                       searchResults.map((p: any) => (
                         <button
@@ -295,34 +295,34 @@ function DeliveryCreateModal({ onClose, onCreated }: { onClose: () => void; onCr
             )}
           </div>
 
-          {/* Tipo */}
+          {/* Type */}
           <div>
-            <label className="block text-sm font-medium mb-1">Tipo de entrega</label>
+            <label className="block text-sm font-medium mb-1">{t('deliveries.typeLabel')}</label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
               className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
             >
-              <option value="home">A domicilio</option>
-              <option value="branch">Sucursal</option>
+              <option value="home">{t('deliveries.typeHome')}</option>
+              <option value="branch">{t('deliveries.typeBranch')}</option>
             </select>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input label="Nombre del destinatario" value={receiverName} onChange={(e) => setReceiverName(e.target.value)} required />
-            <Input label="Documento del destinatario" value={receiverDocument} onChange={(e) => setReceiverDocument(e.target.value)} required />
+            <Input label={t('deliveries.receiverName')} value={receiverName} onChange={(e) => setReceiverName(e.target.value)} required />
+            <Input label={t('deliveries.receiverDocument')} value={receiverDocument} onChange={(e) => setReceiverDocument(e.target.value)} required />
           </div>
-          <Input label="Teléfono del destinatario" value={receiverPhone} onChange={(e) => setReceiverPhone(e.target.value)} />
+          <Input label={t('deliveries.receiverPhone')} value={receiverPhone} onChange={(e) => setReceiverPhone(e.target.value)} />
           {type === 'home' && (
-            <Input label="Dirección" value={address} onChange={(e) => setAddress(e.target.value)} />
+            <Input label={t('common.address')} value={address} onChange={(e) => setAddress(e.target.value)} />
           )}
-          <Input label="Notas" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <Input label={t('common.notes')} value={notes} onChange={(e) => setNotes(e.target.value)} />
 
           <div className="flex gap-3 pt-4">
             <Button type="submit" loading={submitting} disabled={!selectedPackage}>
-              Registrar entrega
+              {t('deliveries.register')}
             </Button>
-            <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
+            <Button type="button" variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
           </div>
         </form>
       </div>
