@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { userService } from '../../../services/user.service';
 import { roleService } from '../../../services/role.service';
 import { Card } from '../../../components/ui/Card';
@@ -10,18 +11,10 @@ import { Input } from '../../../components/ui/Input';
 import { Badge } from '../../../components/ui/Badge';
 import { useDebounce } from '../../../hooks/useDebounce';
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'Admin',
-  manager: 'Gerente',
-  courier: 'Repartidor',
-  office: 'Oficina',
-  cashier: 'Cajero',
-  reception: 'Recepción',
-  warehouse: 'Almacén',
-  delivery: 'Entrega',
-};
-
 export default function UserListPage() {
+  const { t } = useTranslation();
+  // Fallback label for hardcoded role slugs (server role documents may be absent).
+  const roleLabel = (role: string) => (role ? t(`roles.${role}`, { defaultValue: role }) : '');
   const [users, setUsers] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [meta, setMeta] = useState<any>({ page: 1, totalPages: 1, total: 0 });
@@ -54,23 +47,23 @@ export default function UserListPage() {
       await userService.update(user._id, { isActive: user.isActive === false });
       load(meta.page);
     } catch (err: any) {
-      alert(err.response?.data?.error?.message || 'Error al cambiar estado');
+      alert(err.response?.data?.error?.message || t('users.toggleError'));
     }
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Usuarios</h1>
+        <h1 className="text-2xl font-bold">{t('users.title')}</h1>
         <Link to="/users/new">
-          <Button>Nuevo Usuario</Button>
+          <Button>{t('users.new')}</Button>
         </Link>
       </div>
 
       <div className="flex gap-4">
         <div className="max-w-sm flex-1">
           <Input
-            placeholder="Buscar por email o nombre..."
+            placeholder={t('users.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             icon="🔍"
@@ -89,35 +82,34 @@ export default function UserListPage() {
 
       <Card padding={false}>
         <Table
-          headers={['Email', 'Nombre', 'Rol', 'Sucursal', 'Estado', 'Acciones']}
+          headers={[t('common.email'), t('common.name'), t('users.role'), t('common.branch'), t('common.status'), t('common.actions')]}
           items={users}
           loading={loading}
           renderRow={(u) => (
             <div className="flex flex-col gap-2">
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Email</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('common.email')}</span>
                 <span className="text-sm">{u.email}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Nombre</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('common.name')}</span>
                 <span>{u.name} {u.lastName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Rol</span>
-                <span><Badge>{u.roleId?.name || ROLE_LABELS[u.role] || u.role || '—'}</Badge></span>
-              </div>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('users.role')}</span>
+                <span><Badge>{u.roleId?.name || roleLabel(u.role) || '—'}</Badge></span>              </div>
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Sucursal</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('common.branch')}</span>
                 <span className="text-sm">{u.branchId?.name || '—'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Estado</span>
-                <span><Badge variant={u.isActive !== false ? 'success' : 'danger'}>{u.isActive !== false ? 'Activo' : 'Inactivo'}</Badge></span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('common.status')}</span>
+                <span><Badge variant={u.isActive !== false ? 'success' : 'danger'}>{u.isActive !== false ? t('common.active') : t('common.inactive')}</Badge></span>
               </div>
               <div className="pt-2 border-t border-gray-100 dark:border-gray-700 flex gap-2 justify-end">
-                <Link to={`/users/${u._id}/edit`} className="text-primary-600 hover:text-primary-700 text-sm">Editar</Link>
+                <Link to={`/users/${u._id}/edit`} className="text-primary-600 hover:text-primary-700 text-sm">{t('common.edit')}</Link>
                 <button onClick={() => handleToggleStatus(u)} className="text-red-600 hover:text-red-700 text-sm">
-                  {u.isActive !== false ? 'Desactivar' : 'Activar'}
+                  {u.isActive !== false ? t('users.deactivate') : t('users.activate')}
                 </button>
               </div>
             </div>
