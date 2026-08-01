@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../utils/cn';
 
 interface TableProps {
@@ -23,11 +24,12 @@ function useMediaQuery(query: string): boolean {
 
 export function Table({ headers, children, className, loading, renderRow, items }: TableProps) {
   const isMobile = useMediaQuery('(max-width: 639px)');
+  const { t } = useTranslation();
 
-  // Cards view — cuando hay items+renderRow (mobile-first), o siempre si no hay children
+  // Cards view — when items+renderRow are provided (mobile-first), or always when there are no children
   if (items && renderRow && (!children || isMobile)) {
     return (
-      <div className="space-y-3" role="list" aria-label="Tabla de datos">
+      <div className="space-y-3" role="list" aria-label={t('common.dataTable')}>
         {loading ? (
           Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 animate-pulse space-y-2">
@@ -63,7 +65,7 @@ export function Table({ headers, children, className, loading, renderRow, items 
           {loading ? (
             <tr>
               <td colSpan={headers.length} className="px-4 py-8 text-center text-gray-400">
-                Cargando...
+                {t('common.loading')}
               </td>
             </tr>
           ) : items && renderRow ? (

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import type { RootState } from '../../store';
 import { setSearchResults, setSearchLoading, clearSearchResults } from '../../store/slices/customerSlice';
 import { customerService } from '../../services/customer.service';
@@ -14,6 +15,7 @@ interface CustomerSearchInputProps {
 
 export default function CustomerSearchInput({ value, onChange, error }: CustomerSearchInputProps) {
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const { searchResults, searchLoading } = useSelector((s: RootState) => s.customers);
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -21,7 +23,7 @@ export default function CustomerSearchInput({ value, onChange, error }: Customer
   const debouncedQuery = useDebounce(query, 300);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Cerrar dropdown al hacer click fuera
+  // Close the dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
@@ -32,7 +34,7 @@ export default function CustomerSearchInput({ value, onChange, error }: Customer
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Buscar cuando cambia el query debounced
+  // Search when the debounced query changes
   useEffect(() => {
     if (!debouncedQuery || debouncedQuery.length < 2) {
       dispatch(clearSearchResults());
@@ -62,7 +64,7 @@ export default function CustomerSearchInput({ value, onChange, error }: Customer
   return (
     <div className="space-y-1" ref={wrapperRef}>
       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-        Cliente
+        {t('common.customer')}
       </label>
 
       {selectedLabel ? (
@@ -83,7 +85,7 @@ export default function CustomerSearchInput({ value, onChange, error }: Customer
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => searchResults.length > 0 && setOpen(true)}
-            placeholder="Buscar por nombre o código..."
+            placeholder={t('common.searchCustomer')}
             className={cn(
               'w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm',
               'placeholder:text-gray-400 dark:placeholder:text-gray-500',
@@ -111,13 +113,13 @@ export default function CustomerSearchInput({ value, onChange, error }: Customer
 
           {searchLoading && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <span className="text-xs text-gray-400">Buscando...</span>
+              <span className="text-xs text-gray-400">{t('common.searching')}</span>
             </div>
           )}
 
           {open && debouncedQuery.length >= 2 && searchResults.length === 0 && !searchLoading && (
             <div className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg p-3 text-sm text-gray-500 text-center">
-              Sin resultados
+              {t('common.noResults')}
             </div>
           )}
         </div>

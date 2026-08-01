@@ -1,4 +1,5 @@
 import { useDispatch, useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { RootState } from '../../store';
 import { toggleTheme, openSidebar } from '../../store/slices/uiSlice';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
@@ -13,6 +14,7 @@ export default function Navbar() {
   const { user } = useSelector((state: RootState) => state.auth);
   const theme = useSelector((state: RootState) => state.ui.theme);
   const isMobile = useMediaQuery('(max-width: 767px)');
+  const { t } = useTranslation();
 
   const handleLogout = async () => {
     try {
@@ -30,7 +32,7 @@ export default function Navbar() {
           <button
             onClick={() => dispatch(openSidebar())}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
-            aria-label="Abrir menú"
+            aria-label={t('nav.openMenu')}
           >
             ☰
           </button>
@@ -57,7 +59,7 @@ export default function Navbar() {
           onClick={handleLogout}
           className="text-sm text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
         >
-          Salir
+          {t('nav.logout')}
         </button>
       </div>
     </header>

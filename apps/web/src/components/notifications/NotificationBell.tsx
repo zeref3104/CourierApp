@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { Bell } from 'lucide-react';
 import { RootState } from '../../store';
 import { setUnreadCount } from '../../store/slices/notificationSlice';
@@ -9,6 +10,7 @@ import { formatRelative } from '../../utils/formatDate';
 
 export default function NotificationBell() {
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const unreadCount = useSelector((state: RootState) => state.notifications.unreadCount);
   const [open, setOpen] = useState(false);
   const [list, setList] = useState<any[]>([]);
@@ -32,11 +34,11 @@ export default function NotificationBell() {
       const res = await notificationService.findAll({ limit: 10 });
       setList(res.data);
     } catch {
-      setError('No se pudieron cargar las notificaciones');
+      setError(t('nav.notificationsLoadError'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   // Initial unread count
   useEffect(() => {
@@ -97,7 +99,7 @@ export default function NotificationBell() {
       <button
         onClick={toggle}
         className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
-        aria-label="Notificaciones"
+        aria-label={t('nav.notifications')}
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
@@ -110,21 +112,21 @@ export default function NotificationBell() {
       {open && (
         <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-            <h3 className="font-semibold text-sm">Notificaciones</h3>
+            <h3 className="font-semibold text-sm">{t('nav.notifications')}</h3>
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
                 className="text-xs text-primary-600 hover:text-primary-700"
               >
-                Marcar todas como leídas
+                {t('nav.markAllAsRead')}
               </button>
             )}
           </div>
           <div className="max-h-80 overflow-y-auto">
-            {loading && <p className="text-center text-sm text-gray-400 py-6">Cargando...</p>}
+            {loading && <p className="text-center text-sm text-gray-400 py-6">{t('common.loading')}</p>}
             {!loading && error && <p className="text-center text-sm text-red-500 py-6">{error}</p>}
             {!loading && !error && list.length === 0 && (
-              <p className="text-center text-sm text-gray-400 py-6">No tienes notificaciones</p>
+              <p className="text-center text-sm text-gray-400 py-6">{t('nav.noNotifications')}</p>
             )}
             {!loading &&
               !error &&

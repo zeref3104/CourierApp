@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { RootState } from '../../store';
 import { toggleSidebar, closeSidebar } from '../../store/slices/uiSlice';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
@@ -11,22 +12,23 @@ export default function Sidebar() {
   const user = useSelector((state: RootState) => state.auth.user);
   const dispatch = useDispatch();
   const isDesktop = useMediaQuery('(min-width: 768px)');
+  const { t } = useTranslation();
 
   const isSuperAdmin = user?.role === 'superadmin';
 
   const menuItems = [
-    { label: 'Dashboard', path: '/', icon: '📊' },
+    { label: t('nav.dashboard'), path: '/', icon: '📊' },
     ...(isSuperAdmin
-      ? [{ label: 'Empresas', path: '/companies', icon: '🏢' }]
+      ? [{ label: t('nav.companies'), path: '/companies', icon: '🏢' }]
       : []),
-    { label: 'Clientes', path: '/customers', icon: '👥' },
-    { label: 'Paquetes', path: '/packages', icon: '📦' },
-    { label: 'Pagos', path: '/payments', icon: '💰' },
-    { label: 'Entregas', path: '/deliveries', icon: '🚚' },
-    { label: 'Usuarios', path: '/users', icon: '👤' },
-    { label: 'Sucursales', path: '/branches', icon: '🏢' },
-    { label: 'Reportes', path: '/reports', icon: '📈' },
-    { label: 'Configuración', path: '/settings', icon: '⚙️' },
+    { label: t('nav.customers'), path: '/customers', icon: '👥' },
+    { label: t('nav.packages'), path: '/packages', icon: '📦' },
+    { label: t('nav.payments'), path: '/payments', icon: '💰' },
+    { label: t('nav.deliveries'), path: '/deliveries', icon: '🚚' },
+    { label: t('nav.users'), path: '/users', icon: '👤' },
+    { label: t('nav.branches'), path: '/branches', icon: '🏢' },
+    { label: t('nav.reports'), path: '/reports', icon: '📈' },
+    { label: t('nav.settings'), path: '/settings', icon: '⚙️' },
   ];
 
   const handleNavClick = () => {
@@ -71,6 +73,7 @@ export default function Sidebar() {
         {isDesktop ? (
           <button
             onClick={() => dispatch(toggleSidebar())}
+            aria-label={t('nav.toggleSidebar')}
             className="p-2 m-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 self-end"
           >
             {collapsed ? '→' : '←'}
@@ -78,6 +81,7 @@ export default function Sidebar() {
         ) : (
           <button
             onClick={() => dispatch(closeSidebar())}
+            aria-label={t('nav.closeMenu')}
             className="p-2 m-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 self-end"
           >
             ✕

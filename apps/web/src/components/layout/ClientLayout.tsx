@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { authService } from '../../services/auth.service';
 import { logout } from '../../store/slices/authSlice';
 
@@ -8,6 +9,7 @@ export default function ClientLayout() {
   const [navOpen, setNavOpen] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleLogout = async () => {
     try {
@@ -21,24 +23,24 @@ export default function ClientLayout() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <h1 className="text-xl font-bold text-primary-600">Mi Courier</h1>
+          <h1 className="text-xl font-bold text-primary-600">{t('nav.myCourier')}</h1>
           <nav className="flex items-center gap-4">
             <button
               className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
               onClick={() => setNavOpen(!navOpen)}
-              aria-label={navOpen ? 'Cerrar menú' : 'Abrir menú'}
+              aria-label={navOpen ? t('nav.closeMenu') : t('nav.openMenu')}
               aria-expanded={navOpen}
             >
               {navOpen ? '✕' : '☰'}
             </button>
             <div className={navOpen ? 'fixed inset-0 z-40 md:static md:inset-auto md:z-auto bg-white dark:bg-gray-800 md:bg-transparent md:flex md:flex-row flex-col md:items-center md:gap-4 p-6 md:p-0 transition-all duration-300' : 'hidden'}>
-              <Link to="/client" className="text-gray-600 dark:text-gray-300 hover:text-primary-600 py-2 md:py-0 block md:inline" onClick={() => setNavOpen(false)}>Dashboard</Link>
-              <Link to="/client/packages" className="text-gray-600 dark:text-gray-300 hover:text-primary-600 py-2 md:py-0 block md:inline" onClick={() => setNavOpen(false)}>Mis Paquetes</Link>
+              <Link to="/client" className="text-gray-600 dark:text-gray-300 hover:text-primary-600 py-2 md:py-0 block md:inline" onClick={() => setNavOpen(false)}>{t('nav.dashboard')}</Link>
+              <Link to="/client/packages" className="text-gray-600 dark:text-gray-300 hover:text-primary-600 py-2 md:py-0 block md:inline" onClick={() => setNavOpen(false)}>{t('nav.myPackages')}</Link>
               <button
                 onClick={handleLogout}
                 className="text-sm text-left text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 py-2 md:py-0 block md:inline"
               >
-                Salir
+                {t('nav.logout')}
               </button>
             </div>
           </nav>

@@ -1,6 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../utils/cn';
 import { getStatusColor } from '../../utils/getStatusColor';
-import { STATUS_LABELS } from '@courier/constants';
 
 interface BadgeProps {
   variant?: 'default' | 'success' | 'warning' | 'danger' | 'info';
@@ -25,7 +25,9 @@ export function Badge({ variant = 'default', children, className }: BadgeProps) 
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  const label = STATUS_LABELS[status] || status;
+  const { t } = useTranslation();
+  // Dynamic key: fall back to the raw status slug when the status is unknown.
+  const label = t(`status.${status}`, { defaultValue: status });
   return (
     <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getStatusColor(status))}>
       {label}
