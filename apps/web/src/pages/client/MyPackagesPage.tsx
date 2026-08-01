@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card } from '../../components/ui/Card';
 import { Table } from '../../components/ui/Table';
 import { StatusBadge } from '../../components/ui/Badge';
 import { useLiveRefresh } from '../../hooks/useSocketEvents';
+import { formatDate } from '../../utils/formatDate';
 
 export default function MyPackagesPage() {
+  const { t } = useTranslation();
   const [packages, setPackages] = useState<any[]>([]);
 
   const load = useCallback(async () => {
@@ -20,38 +23,38 @@ export default function MyPackagesPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Mis Paquetes</h1>
+      <h1 className="text-2xl font-bold">{t('nav.myPackages')}</h1>
       <Card padding={false}>
         <Table
-          headers={['Tracking', 'Descripción', 'Peso', 'Estado', 'Fecha']}
+          headers={[t('packages.tracking'), t('packages.description'), t('packages.weight'), t('common.status'), t('common.date')]}
           items={packages}
           renderRow={(p) => (
             <div className="flex flex-col gap-2">
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Tracking</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('packages.tracking')}</span>
                 <span className="font-mono font-medium">{p.tracking}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Descripción</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('packages.description')}</span>
                 <span>{p.description}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Peso</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('packages.weight')}</span>
                 <span>{p.weight} lbs</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Estado</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('common.status')}</span>
                 <span><StatusBadge status={p.status} /></span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Fecha</span>
-                <span className="text-sm text-gray-500">{new Date(p.createdAt).toLocaleDateString()}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('common.date')}</span>
+                <span className="text-sm text-gray-500">{formatDate(p.createdAt)}</span>
               </div>
             </div>
           )}
         />
         {packages.length === 0 && (
-          <p className="text-center py-8 text-gray-400">No tienes paquetes registrados</p>
+          <p className="text-center py-8 text-gray-400">{t('client.noPackages')}</p>
         )}
       </Card>
     </div>
