@@ -1,21 +1,15 @@
 import JsBarcode from 'jsbarcode';
+import type { TFunction } from 'i18next';
 import type { Package } from '../types/package';
+import i18n from '../i18n';
 import { formatDate } from './formatDate';
+import { escapeHtml } from './escapeHtml';
 
 const DEFAULT_COMPANY_NAME = 'COURIER EXPRESS';
 
 // Debounce: prevent rapid repeated clicks from opening multiple print windows.
 let lastPrintAt = 0;
 const PRINT_COOLDOWN_MS = 1500;
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 function truncate(value: string, maxLength = 48): string {
   return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
@@ -25,8 +19,14 @@ function truncate(value: string, maxLength = 48): string {
  * Builds the exact-size label HTML (100mm x 60mm) for a package.
  * Pure function, safe to test without a browser. The barcode SVG is rendered
  * later (in printPackageLabel) into the placeholder below.
+ * All copy is translated at print time via the injectable `t` (defaults to the
+ * active i18n instance, so the label follows the current UI language).
  */
-export function buildPackageLabelHtml(pkg: Package, companyName?: string): string {
+export function buildPackageLabelHtml(
+  pkg: Package,
+  companyName?: string,
+  t: TFunction = i18n.t,
+): string {
   const company = companyName || DEFAULT_COMPANY_NAME;
   const customer = pkg.customerId || ({} as any);
   const customerName = [customer.name, customer.lastName].filter(Boolean).join(' ').trim();
@@ -42,10 +42,10 @@ export function buildPackageLabelHtml(pkg: Package, companyName?: string): strin
   const description = pkg.description ? escapeHtml(truncate(pkg.description)) : '—';
 
   return `<!DOCTYPE html>
-<html>
+<html lang="${i18n.language}">
 <head>
   <meta charset="utf-8">
-  <title>Etiqueta ${escapeHtml(pkg.tracking)}</title>
+  <title>${t('print.label.title', { tracking: escapeHtml(pkg.tracking) })}</title>
   <style>
     @page { size: 100mm 60mm; margin: 0; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -109,30 +109,30 @@ export function buildPackageLabelHtml(pkg: Package, companyName?: string): strin
   <div class="label-sheet">
     <div class="header">
       <span class="company">${escapeHtml(company)}</span>
-      <span class="tag">Paquete</span>
+      <span class="tag">${t('common.package')}</span>
     </div>
     <div class="tracking">${escapeHtml(pkg.tracking)}</div>
     <table class="fields">
       <tr>
-        <td class="label">Cliente</td>
+        <td class="label">${t('common.customer')}</td>
         <td>${escapeHtml(customerName || '—')}</td>
-        <td class="label">Peso</td>
+        <td class="label">${t('packages.weight')}</td>
         <td>${weight > 0 ? `${weight.toFixed(1)} lbs` : '—'}</td>
       </tr>
       <tr>
-        <td class="label">Código</td>
+        <td class="label">${t('common.code')}</td>
         <td>${escapeHtml(customerCode)}</td>
-        <td class="label">Fecha</td>
+        <td class="label">${t('common.date')}</td>
         <td>${receivedAt}</td>
       </tr>
       <tr>
-        <td class="label">Sucursal</td>
+        <td class="label">${t('common.branch')}</td>
         <td>${escapeHtml(branchName)}</td>
         <td class="label"></td>
         <td></td>
       </tr>
       <tr>
-        <td class="label">Descripción</td>
+        <td class="label">${t('packages.description')}</td>
         <td colspan="3">${description}</td>
       </tr>
     </table>
@@ -150,23 +150,23 @@ export function buildPackageLabelHtml(pkg: Package, companyName?: string): strin
  * the tracking number into the SVG placeholder, and triggers the browser print
  * dialog. Follows the same pattern as PaymentDetailPage.openPrintWindow.
  */
-export function printPackageLabel(pkg: Package, companyName?: string): void {
+export function printPackageLabel(pkg: Package, companyName?: string, t: TFunction = i18n.t): void {
   const now = Date.now();
   if (now - lastPrintAt < PRINT_COOLDOWN_MS) return;
   lastPrintAt = now;
 
   const win = window.open('', '_blank');
   if (!win) {
-    alert('Pop-up bloqueado. Permití ventanas emergentes para imprimir la etiqueta.');
+    alert(t('print.label.popupBlocked'));
     return;
   }
 
   try {
-    win.document.write(buildPackageLabelHtml(pkg, companyName));
+    win.document.write(buildPackageLabelHtml(pkg, companyName, t));
   } catch (err) {
     win.close();
-    console.error('Error generando la etiqueta:', err);
-    alert('No se pudo generar la etiqueta. Revisá los datos del paquete.');
+    console.error('Error generating the label:', err);
+    alert(t('print.label.generateError'));
     return;
   }
   win.document.close();
