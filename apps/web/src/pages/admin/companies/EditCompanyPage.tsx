@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { companyService, Plan, Company } from '../../../services/company.service';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
@@ -8,6 +9,7 @@ import { Input } from '../../../components/ui/Input';
 export default function EditCompanyPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const { t } = useTranslation();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -35,7 +37,7 @@ export default function EditCompanyPage() {
         });
         setPlans(plansRes.data);
       })
-      .catch(() => setError('Error al cargar datos'))
+      .catch(() => setError(t('common.loadDataError')))
       .finally(() => setFetching(false));
   }, [id]);
 
@@ -43,7 +45,7 @@ export default function EditCompanyPage() {
     e.preventDefault();
     setError('');
     if (!form.planId) {
-      setError('Debes seleccionar un plan');
+      setError(t('companies.selectPlanRequired'));
       return;
     }
     setLoading(true);
@@ -56,7 +58,7 @@ export default function EditCompanyPage() {
       });
       navigate('/companies');
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || err.response?.data?.message || 'Error al actualizar');
+      setError(err.response?.data?.error?.message || err.response?.data?.message || t('companies.updateError'));
     } finally {
       setLoading(false);
     }
@@ -64,7 +66,7 @@ export default function EditCompanyPage() {
 
   if (fetching) {
     return (
-      <div className="text-center py-12 text-gray-500">Cargando...</div>
+      <div className="text-center py-12 text-gray-500">{t('common.loading')}</div>
     );
   }
 
@@ -75,22 +77,22 @@ export default function EditCompanyPage() {
           onClick={() => navigate('/companies')}
           className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
         >
-          ← Volver
+          {t('common.back')}
         </button>
-        <h1 className="text-2xl font-bold">Editar Empresa</h1>
+        <h1 className="text-2xl font-bold">{t('companies.editTitle')}</h1>
       </div>
 
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            label="Nombre de la empresa"
+            label={t('companies.name')}
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             required
           />
 
           <Input
-            label="Email del administrador"
+            label={t('companies.adminEmail')}
             type="email"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -98,23 +100,23 @@ export default function EditCompanyPage() {
           />
 
           <Input
-            label="Teléfono"
+            label={t('common.phone')}
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
           />
 
           <div>
-            <label className="block text-sm font-medium mb-1">Plan</label>
+            <label className="block text-sm font-medium mb-1">{t('companies.plan')}</label>
             <select
               value={form.planId}
               onChange={(e) => setForm({ ...form, planId: e.target.value })}
               className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               required
             >
-              <option value="">Seleccionar plan</option>
+              <option value="">{t('companies.selectPlan')}</option>
               {plans.map((p) => (
                 <option key={p._id} value={p._id}>
-                  {p.name} {p.price > 0 ? `- $${p.price}/mes` : '(Gratuito)'}
+                  {p.name} {p.price > 0 ? t('companies.perMonth', { price: p.price }) : t('companies.free')}
                 </option>
               ))}
             </select>
@@ -128,10 +130,10 @@ export default function EditCompanyPage() {
 
           <div className="flex gap-3 pt-2">
             <Button type="submit" loading={loading}>
-              Guardar cambios
+              {t('common.saveChanges')}
             </Button>
             <Button type="button" variant="secondary" onClick={() => navigate('/companies')}>
-              Cancelar
+              {t('common.cancel')}
             </Button>
           </div>
         </form>

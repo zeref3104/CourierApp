@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { authService } from '../../services/auth.service';
 import { logout } from '../../store/slices/authSlice';
 import { Button } from '../../components/ui/Button';
@@ -9,6 +10,7 @@ import { Input } from '../../components/ui/Input';
 export default function ChangePasswordPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -22,7 +24,7 @@ export default function ChangePasswordPage() {
     setError('');
 
     if (form.newPassword !== form.confirmPassword) {
-      setError('Las contraseñas no coinciden');
+      setError(t('validation.passwordMismatch'));
       return;
     }
 
@@ -37,7 +39,7 @@ export default function ChangePasswordPage() {
       setError(
         err.response?.data?.error?.message ||
         err.response?.data?.message ||
-        'Error al cambiar la contraseña'
+        t('auth.changePasswordError')
       );
     } finally {
       setLoading(false);
@@ -55,15 +57,15 @@ export default function ChangePasswordPage() {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-8">
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-primary-600">Cambiar Contraseña</h1>
+        <h1 className="text-2xl font-bold text-primary-600">{t('auth.changePasswordTitle')}</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-          Por seguridad, debes cambiar tu contraseña temporal
+          {t('auth.changePasswordSubtitle')}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Contraseña actual"
+          label={t('auth.currentPassword')}
           type="password"
           placeholder="••••••••"
           value={form.currentPassword}
@@ -72,18 +74,18 @@ export default function ChangePasswordPage() {
         />
 
         <Input
-          label="Nueva contraseña"
+          label={t('auth.newPassword')}
           type="password"
-          placeholder="Mínimo 8 caracteres"
+          placeholder={t('validation.passwordMinHint')}
           value={form.newPassword}
           onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
           required
         />
 
         <Input
-          label="Confirmar nueva contraseña"
+          label={t('auth.confirmNewPassword')}
           type="password"
-          placeholder="Repite la nueva contraseña"
+          placeholder={t('auth.confirmNewPasswordPlaceholder')}
           value={form.confirmPassword}
           onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
           required
@@ -97,10 +99,10 @@ export default function ChangePasswordPage() {
 
         <div className="flex gap-3">
           <Button type="submit" loading={loading} className="flex-1">
-            Cambiar contraseña
+            {t('auth.changePasswordButton')}
           </Button>
           <Button type="button" variant="secondary" onClick={handleCancel}>
-            Cancelar
+            {t('common.cancel')}
           </Button>
         </div>
       </form>
