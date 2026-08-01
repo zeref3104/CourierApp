@@ -1,18 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { paymentService } from '../../../services/payment.service';
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
-import { formatDateTime } from '../../../utils/formatDate';
+import i18n from '../../../i18n';
+import { formatDateTime, formatDate } from '../../../utils/formatDate';
 import { formatCurrency } from '../../../utils/formatCurrency';
+import { escapeHtml } from '../../../utils/escapeHtml';
 import { useLiveRefresh } from '../../../hooks/useSocketEvents';
-
-const METHOD_LABELS: Record<string, string> = {
-  cash: 'Efectivo',
-  card: 'Tarjeta',
-  transfer: 'Transferencia',
-};
 
 function openPrintWindow(html: string) {
   const win = window.open('', '_blank');
@@ -23,7 +21,7 @@ function openPrintWindow(html: string) {
   setTimeout(() => win.print(), 500);
 }
 
-function buildReceiptHtml(payment: any) {
+function buildReceiptHtml(payment: any, t: TFunction) {
   const customer = payment.customerId || {};
   const receipt = payment.receipt;
 
@@ -31,7 +29,7 @@ function buildReceiptHtml(payment: any) {
   const packages = payment.packages || [];
   const items = packages.length > 0
     ? packages.map((p: any) => ({
-        description: p.description ? `Envío #${p.tracking} — ${p.description}` : `Envío #${p.tracking}`,
+        description: p.description || '',
         tracking: p.tracking,
         weight: p.weight,
         amount: p.cost || 0,
@@ -51,35 +49,37 @@ function buildReceiptHtml(payment: any) {
   const tax = items.reduce((s: number, i: any) => s + i.tax, 0);
   const total = items.reduce((s: number, i: any) => s + i.total, 0);
 
-  const methodLabel = METHOD_LABELS[payment.method] || payment.method;
+  // method slug is user data; escape the fallback (the t() result itself is trusted)
+  const methodLabel = t('payment.method.' + payment.method, { defaultValue: escapeHtml(payment.method || '') });
   const paidDate = payment.paidAt
-    ? new Date(payment.paidAt).toLocaleString('es-DO', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-    : new Date().toLocaleDateString('es-DO');
+    ? formatDateTime(payment.paidAt)
+    : formatDate(new Date());
   const receiptNum = payment.receiptNumber || payment._id.slice(-6);
 
   const pkgRows = items.map((i: any) => {
     const tracking = i.tracking || '';
+    // Legacy receipt items may carry a "Envío #..." prefix; strip it and show the raw description.
     const desc = i.description?.replace(/^Envío #\S+ — /, '').replace(/^Envío #\S+/, '') || '';
     const weight = Number(i.weight) || 0;
     const pricePerLb = weight > 0 ? Number(i.amount) / weight : 0;
     return `
     <tr>
       <td style="padding:8px 10px;border-bottom:1px solid #e0e0e0">
-        <strong style="font-family:monospace;font-size:13px">${tracking || '—'}</strong>
-        <div style="color:#666;font-size:11px;margin-top:2px">${desc || '—'}</div>
+        <strong style="font-family:monospace;font-size:13px">${escapeHtml(tracking) || '—'}</strong>
+        <div style="color:#666;font-size:11px;margin-top:2px">${escapeHtml(desc) || '—'}</div>
       </td>
       <td style="padding:8px 10px;border-bottom:1px solid #e0e0e0;text-align:center;font-size:13px;font-weight:600">${weight > 0 ? `${weight.toFixed(1)}` : '—'}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #e0e0e0;text-align:right;font-size:12px">$${pricePerLb.toFixed(2)}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #e0e0e0;text-align:right;font-size:12px;color:#666">$${Number(i.tax).toFixed(2)}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #e0e0e0;text-align:right;font-size:13px;font-weight:600">$${Number(i.total).toFixed(2)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e0e0e0;text-align:right;font-size:12px">${formatCurrency(pricePerLb)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e0e0e0;text-align:right;font-size:12px;color:#666">${formatCurrency(Number(i.tax))}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e0e0e0;text-align:right;font-size:13px;font-weight:600">${formatCurrency(Number(i.total))}</td>
     </tr>`;
   }).join('');
 
   return `<!DOCTYPE html>
-<html>
+<html lang="${i18n.language}">
 <head>
   <meta charset="utf-8">
-  <title>Recibo #${receiptNum}</title>
+  <title>${t('print.receipt.titleTag', { receiptNum: escapeHtml(receiptNum) })}</title>
   <style>
     @page { margin: 12mm 15mm; size: A4; }
     * { box-sizing: border-box; }
@@ -158,26 +158,26 @@ function buildReceiptHtml(payment: any) {
     <!-- Header -->
     <div class="header">
       <p class="company">COURIER SERVICE</p>
-      <p class="title">Recibo de Pago</p>
-      <p class="receipt-num">${receiptNum}</p>
-      <p class="meta">Fecha: ${paidDate} &nbsp;|&nbsp; Método: <strong>${methodLabel}</strong></p>
+      <p class="title">${t('print.receipt.title')}</p>
+      <p class="receipt-num">${escapeHtml(receiptNum)}</p>
+      <p class="meta">${t('print.receipt.date')}: ${paidDate} &nbsp;|&nbsp; ${t('print.receipt.method')}: <strong>${methodLabel}</strong></p>
     </div>
 
     <!-- Customer -->
     <div class="section">
-      <div class="section-title">Cliente</div>
+      <div class="section-title">${t('common.customer')}</div>
       <table class="info-table">
         <tr>
-          <td class="label">Nombre</td>
-          <td class="value">${customer.name || ''} ${customer.lastName || ''}</td>
-          <td class="label">Código</td>
-          <td class="value">${customer.code || '—'}</td>
+          <td class="label">${t('common.name')}</td>
+          <td class="value">${escapeHtml(customer.name || '')} ${escapeHtml(customer.lastName || '')}</td>
+          <td class="label">${t('common.code')}</td>
+          <td class="value">${escapeHtml(customer.code || '—')}</td>
         </tr>
         <tr>
-          <td class="label">Documento</td>
-          <td class="value">${customer.document || '—'}</td>
-          <td class="label">Teléfono</td>
-          <td class="value">${customer.phone || '—'}</td>
+          <td class="label">${t('common.document')}</td>
+          <td class="value">${escapeHtml(customer.document || '—')}</td>
+          <td class="label">${t('common.phone')}</td>
+          <td class="value">${escapeHtml(customer.phone || '—')}</td>
         </tr>
       </table>
     </div>
@@ -186,48 +186,48 @@ function buildReceiptHtml(payment: any) {
     <div class="payment-box">
       <table>
         <tr>
-          <td class="label">Monto pagado</td>
-          <td class="value" style="font-size:18px;font-weight:700;color:#1a237e">$${Number(payment.amount || total).toFixed(2)}</td>
-          <td class="label">Pagado por</td>
-          <td class="value">${payment.processedById?.name || '—'}</td>
-          <td class="label">Estado</td>
-          <td class="value" style="color:#2e7d32">${payment.status === 'paid' ? 'Pagado' : payment.status}</td>
+          <td class="label">${t('print.receipt.amountPaid')}</td>
+          <td class="value" style="font-size:18px;font-weight:700;color:#1a237e">${formatCurrency(Number(payment.amount || total))}</td>
+          <td class="label">${t('print.receipt.paidBy')}</td>
+          <td class="value">${escapeHtml(payment.processedById?.name || '—')}</td>
+          <td class="label">${t('common.status')}</td>
+          <td class="value" style="color:#2e7d32">${payment.status === 'paid' ? t('payments.paid') : escapeHtml(payment.status || '—')}</td>
         </tr>
       </table>
     </div>
 
     <!-- Packages -->
     <div class="section">
-      <div class="section-title">Paquetes incluidos</div>
+      <div class="section-title">${t('payments.packagesIncluded')}</div>
       <table class="pkg-table">
         <thead>
           <tr>
-            <th style="width:30%">Tracking / Descripción</th>
-            <th class="center" style="width:10%">Lbs</th>
-            <th class="right" style="width:17%">Precio x lb</th>
-            <th class="right" style="width:17%">ITBIS</th>
-            <th class="right" style="width:17%">Total</th>
+            <th style="width:30%">${t('print.receipt.trackingDesc')}</th>
+            <th class="center" style="width:10%">${t('print.receipt.lbs')}</th>
+            <th class="right" style="width:17%">${t('print.receipt.pricePerLb')}</th>
+            <th class="right" style="width:17%">${t('print.receipt.itbis')}</th>
+            <th class="right" style="width:17%">${t('packages.total')}</th>
           </tr>
         </thead>
         <tbody>
-          ${pkgRows || '<tr><td colspan="5" style="padding:16px;text-align:center;color:#999">Sin paquetes detallados</td></tr>'}
+          ${pkgRows || `<tr><td colspan="5" style="padding:16px;text-align:center;color:#999">${t('print.receipt.noPackages')}</td></tr>`}
         </tbody>
       </table>
 
       <!-- Totals -->
       <table class="totals">
         <tr>
-          <td class="label">Subtotal</td>
-          <td class="amount">$${Number(subtotal).toFixed(2)}</td>
+          <td class="label">${t('payments.subtotal')}</td>
+          <td class="amount">${formatCurrency(subtotal)}</td>
         </tr>
         <tr>
-          <td class="label">ITBIS (18%)</td>
-          <td class="amount">$${Number(tax).toFixed(2)}</td>
+          <td class="label">${t('print.receipt.itbis18')}</td>
+          <td class="amount">${formatCurrency(tax)}</td>
         </tr>
         <tr class="separator"><td colspan="2"></td></tr>
         <tr class="grand">
-          <td class="label">TOTAL</td>
-          <td class="amount">$${Number(total).toFixed(2)}</td>
+          <td class="label">${t('print.receipt.grandTotal')}</td>
+          <td class="amount">${formatCurrency(total)}</td>
         </tr>
       </table>
     </div>
@@ -235,14 +235,14 @@ function buildReceiptHtml(payment: any) {
     <!-- Notes -->
     ${payment.notes ? `
     <div class="section">
-      <div class="section-title">Notas</div>
-      <p style="margin:0;font-size:12px;color:#555">${payment.notes}</p>
+      <div class="section-title">${t('common.notes')}</div>
+      <p style="margin:0;font-size:12px;color:#555">${escapeHtml(payment.notes)}</p>
     </div>` : ''}
 
     <!-- Footer -->
     <div class="footer">
-      <p>Gracias por confiar en nosotros.</p>
-      <p>Este recibo fue generado electrónicamente el ${paidDate}.</p>
+      <p>${t('print.receipt.thanks')}</p>
+      <p>${t('print.receipt.generatedAt', { date: paidDate })}</p>
     </div>
 
   </div>
@@ -252,6 +252,7 @@ function buildReceiptHtml(payment: any) {
 
 export default function PaymentDetailPage() {
   const { id } = useParams();
+  const { t } = useTranslation();
   const [payment, setPayment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -269,11 +270,11 @@ export default function PaymentDetailPage() {
 
   const handlePrint = useCallback(() => {
     if (!payment) return;
-    openPrintWindow(buildReceiptHtml(payment));
-  }, [payment]);
+    openPrintWindow(buildReceiptHtml(payment, t));
+  }, [payment, t]);
 
-  if (loading) return <div className="text-center py-12 text-gray-400">Cargando...</div>;
-  if (!payment) return <div className="text-center py-12 text-gray-400">Pago no encontrado</div>;
+  if (loading) return <div className="text-center py-12 text-gray-400">{t('common.loading')}</div>;
+  if (!payment) return <div className="text-center py-12 text-gray-400">{t('payments.notFound')}</div>;
 
   const receipt = payment.receipt;
   const receiptNum = payment.receiptNumber || payment._id.slice(-6);
@@ -283,11 +284,11 @@ export default function PaymentDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Pago {receiptNum}</h1>
-          <p className="text-sm text-gray-500">Recibo #{receiptNum}</p>
+          <h1 className="text-2xl font-bold">{t('payments.titleWithReceipt', { receiptNum })}</h1>
+          <p className="text-sm text-gray-500">{t('payments.receiptWithNumber', { receiptNum })}</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button onClick={handlePrint}>Imprimir Recibo</Button>
+          <Button onClick={handlePrint}>{t('payments.printReceipt')}</Button>
           {receipt?.pdfUrl && (
             <a
               href={receipt.pdfUrl}
@@ -295,14 +296,14 @@ export default function PaymentDetailPage() {
               rel="noopener noreferrer"
               className="text-sm text-primary-600 hover:text-primary-700 underline"
             >
-              Descargar PDF
+              {t('payments.downloadPdf')}
             </a>
           )}
           <Link
             to="/payments"
             className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
           >
-            Volver a pagos
+            {t('payments.backToPayments')}
           </Link>
         </div>
       </div>
@@ -310,10 +311,10 @@ export default function PaymentDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Payment info */}
         <Card className="lg:col-span-2">
-          <h2 className="text-lg font-semibold mb-4">Información del pago</h2>
+          <h2 className="text-lg font-semibold mb-4">{t('payments.paymentInfo')}</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-gray-500">Cliente</p>
+              <p className="text-sm text-gray-500">{t('common.customer')}</p>
               <p className="font-medium">
                 {payment.customerId?.name} {payment.customerId?.lastName}
               </p>
@@ -321,39 +322,39 @@ export default function PaymentDetailPage() {
                 <p className="text-sm text-gray-500">{payment.customerId.code}</p>
               )}
               {payment.customerId?.document && (
-                <p className="text-sm text-gray-500">Doc: {payment.customerId.document}</p>
+                <p className="text-sm text-gray-500">{t('payments.docLabel')}: {payment.customerId.document}</p>
               )}
               {payment.customerId?.phone && (
-                <p className="text-sm text-gray-500">Tel: {payment.customerId.phone}</p>
+                <p className="text-sm text-gray-500">{t('payments.telLabel')}: {payment.customerId.phone}</p>
               )}
             </div>
             <div className="space-y-2">
               <div>
-                <p className="text-sm text-gray-500">Monto</p>
+                <p className="text-sm text-gray-500">{t('payments.amount')}</p>
                 <p className="text-xl font-bold">{formatCurrency(payment.amount)}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Método</p>
-                <Badge>{METHOD_LABELS[payment.method] || payment.method}</Badge>
+                <p className="text-sm text-gray-500">{t('payments.method')}</p>
+                <Badge>{t('payment.method.' + payment.method, { defaultValue: payment.method })}</Badge>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Estado</p>
+                <p className="text-sm text-gray-500">{t('common.status')}</p>
                 <Badge variant={payment.status === 'paid' ? 'success' : payment.status === 'pending' ? 'warning' : 'default'}>
-                  {payment.status === 'paid' ? 'Pagado' : payment.status === 'pending' ? 'Pendiente' : payment.status}
+                  {payment.status === 'paid' ? t('payments.paid') : payment.status === 'pending' ? t('payments.pending') : payment.status}
                 </Badge>
               </div>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Fecha de pago</p>
+              <p className="text-sm text-gray-500">{t('payments.paidDate')}</p>
               <p className="font-medium">{payment.paidAt ? formatDateTime(payment.paidAt) : '—'}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Procesado por</p>
+              <p className="text-sm text-gray-500">{t('payments.processedBy')}</p>
               <p className="font-medium">{payment.processedById?.name || '—'}</p>
             </div>
             {payment.notes && (
               <div className="col-span-2">
-                <p className="text-sm text-gray-500">Notas</p>
+                <p className="text-sm text-gray-500">{t('common.notes')}</p>
                 <p className="font-medium">{payment.notes}</p>
               </div>
             )}
@@ -363,36 +364,36 @@ export default function PaymentDetailPage() {
         {/* Receipt summary */}
         {receipt && (
           <Card>
-            <h2 className="text-lg font-semibold mb-4">Resumen del recibo</h2>
+            <h2 className="text-lg font-semibold mb-4">{t('payments.receiptSummary')}</h2>
             <div className="space-y-3 text-sm">
               {receipt.items?.map((item: any, i: number) => (
                 <div key={i} className="border-b border-gray-100 dark:border-gray-700 pb-2">
                   <p className="font-medium truncate">{item.description}</p>
                   <div className="flex justify-between text-gray-500">
-                    <span>Subtotal</span>
+                    <span>{t('payments.subtotal')}</span>
                     <span>{formatCurrency(item.amount)}</span>
                   </div>
                   <div className="flex justify-between text-gray-500">
-                    <span>Impuesto</span>
+                    <span>{t('packages.tax')}</span>
                     <span>{formatCurrency(item.tax)}</span>
                   </div>
                   <div className="flex justify-between font-medium">
-                    <span>Total</span>
+                    <span>{t('packages.total')}</span>
                     <span>{formatCurrency(item.total)}</span>
                   </div>
                 </div>
               ))}
               <hr className="dark:border-gray-700" />
               <div className="flex justify-between">
-                <span>Subtotal</span>
+                <span>{t('payments.subtotal')}</span>
                 <span>{formatCurrency(receipt.subtotal)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Impuesto</span>
+                <span>{t('packages.tax')}</span>
                 <span>{formatCurrency(receipt.tax)}</span>
               </div>
               <div className="flex justify-between font-semibold text-base">
-                <span>Total</span>
+                <span>{t('packages.total')}</span>
                 <span>{formatCurrency(receipt.total)}</span>
               </div>
             </div>
@@ -402,16 +403,16 @@ export default function PaymentDetailPage() {
 
       {/* Packages */}
       <Card>
-        <h2 className="text-lg font-semibold mb-4">Paquetes incluidos</h2>
+        <h2 className="text-lg font-semibold mb-4">{t('payments.packagesIncluded')}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-700">
-                <th className="text-left py-2 px-3 font-medium text-gray-500">Tracking</th>
-                <th className="text-left py-2 px-3 font-medium text-gray-500">Descripción</th>
-                <th className="text-right py-2 px-3 font-medium text-gray-500">Peso</th>
-                <th className="text-right py-2 px-3 font-medium text-gray-500">Total</th>
-                <th className="text-center py-2 px-3 font-medium text-gray-500">Estado</th>
+                <th className="text-left py-2 px-3 font-medium text-gray-500">{t('packages.tracking')}</th>
+                <th className="text-left py-2 px-3 font-medium text-gray-500">{t('packages.description')}</th>
+                <th className="text-right py-2 px-3 font-medium text-gray-500">{t('packages.weight')}</th>
+                <th className="text-right py-2 px-3 font-medium text-gray-500">{t('packages.total')}</th>
+                <th className="text-center py-2 px-3 font-medium text-gray-500">{t('common.status')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -425,7 +426,7 @@ export default function PaymentDetailPage() {
                   <td className="py-2 px-3 text-right font-medium">{formatCurrency(pkg.total)}</td>
                   <td className="py-2 px-3 text-center">
                     <Badge variant={pkg.status === 'entregado' ? 'success' : 'default'}>
-                      {pkg.status?.replace(/_/g, ' ') || '—'}
+                      {t('status.' + pkg.status, { defaultValue: pkg.status?.replace(/_/g, ' ') || '—' })}
                     </Badge>
                   </td>
                 </tr>
@@ -433,7 +434,7 @@ export default function PaymentDetailPage() {
               {(!payment.packages || payment.packages.length === 0) && (
                 <tr>
                   <td colSpan={5} className="text-center py-8 text-gray-400">
-                    Sin paquetes asociados
+                    {t('payments.noPackages')}
                   </td>
                 </tr>
               )}
