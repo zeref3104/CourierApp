@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../utils/cn';
 
 interface PaginationProps {
@@ -19,12 +20,13 @@ function useMediaQuery(query: string): boolean {
 }
 
 export function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
+  const { t } = useTranslation();
   const isMobile = useMediaQuery('(max-width: 479px)');
 
   return (
     <div className="flex items-center justify-between mt-4 flex-wrap gap-2">
       <p className="text-sm text-gray-500 dark:text-gray-400">
-        Página {page} de {totalPages}
+        {t('common.pageOf', { page, totalPages })}
       </p>
       <div className="flex gap-1">
         <button
@@ -32,7 +34,7 @@ export function Pagination({ page, totalPages, onPageChange }: PaginationProps) 
           disabled={page <= 1}
           className="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 disabled:opacity-50 hover:bg-gray-100 dark:hover:bg-gray-700"
         >
-          {isMobile ? '←' : 'Anterior'}
+          {isMobile ? '←' : t('common.previous')}
         </button>
         {!isMobile && (
           Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => {
@@ -58,7 +60,7 @@ export function Pagination({ page, totalPages, onPageChange }: PaginationProps) 
           disabled={page >= totalPages}
           className="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 disabled:opacity-50 hover:bg-gray-100 dark:hover:bg-gray-700"
         >
-          {isMobile ? '→' : 'Siguiente'}
+          {isMobile ? '→' : t('common.next')}
         </button>
       </div>
     </div>
