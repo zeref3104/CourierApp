@@ -9,6 +9,14 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    // Dev-server counterpart of build.commonjsOptions below: the @courier/*
+    // workspace packages are CommonJS but resolve outside node_modules, so
+    // Vite serves them raw (no CJS->ESM conversion) unless pre-bundled.
+    // Without this, named imports like STATUS_TRANSITIONS fail at runtime:
+    // "does not provide an export named '...'".
+    include: ['@courier/constants'],
+  },
   server: {
     port: 5173,
     proxy: {
