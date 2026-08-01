@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { paymentService } from '../../../services/payment.service';
 import { customerService } from '../../../services/customer.service';
 import { Card } from '../../../components/ui/Card';
@@ -11,6 +12,7 @@ import { useDebounce } from '../../../hooks/useDebounce';
 
 export default function PaymentFormPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [customerId, setCustomerId] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -95,7 +97,7 @@ export default function PaymentFormPage() {
       });
       navigate('/payments');
     } catch (err: any) {
-      alert(err.response?.data?.error?.message || 'Error al registrar el pago');
+      alert(err.response?.data?.error?.message || t('payments.createError'));
     } finally {
       setLoading(false);
     }
@@ -103,12 +105,12 @@ export default function PaymentFormPage() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-2xl font-bold mb-6">Nuevo Pago</h1>
+      <h1 className="text-2xl font-bold mb-6">{t('payments.new')}</h1>
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Cliente — search + dropdown */}
+          {/* Customer — search + dropdown */}
           <div ref={searchRef}>
-            <label className="block text-sm font-medium mb-1">Cliente</label>
+            <label className="block text-sm font-medium mb-1">{t('common.customer')}</label>
             {selectedCustomer ? (
               <div className="flex items-center justify-between rounded-lg border border-primary-500 bg-primary-50 dark:bg-primary-900/20 px-3 py-2 text-sm">
                 <div>
@@ -132,7 +134,7 @@ export default function PaymentFormPage() {
             ) : (
               <div className="relative">
                 <Input
-                  placeholder="Buscar por nombre, código o teléfono..."
+                  placeholder={t('payments.searchCustomerPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -144,9 +146,9 @@ export default function PaymentFormPage() {
                 {showDropdown && debouncedSearch.length >= 2 && (
                   <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                     {searching ? (
-                      <div className="px-3 py-2 text-sm text-gray-400">Buscando...</div>
+                      <div className="px-3 py-2 text-sm text-gray-400">{t('common.searching')}</div>
                     ) : searchResults.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-gray-400">Sin resultados</div>
+                      <div className="px-3 py-2 text-sm text-gray-400">{t('common.noResults')}</div>
                     ) : (
                       searchResults.map((c: any) => (
                         <button
@@ -173,17 +175,17 @@ export default function PaymentFormPage() {
             )}
           </div>
 
-          {/* Paquetes */}
+          {/* Packages */}
           {customerId && (
             <div>
               <label className="block text-sm font-medium mb-2">
-                Paquetes pendientes
-                {packagesLoading && <span className="ml-2 text-gray-400">Cargando...</span>}
+                {t('payments.pendingPackages')}
+                {packagesLoading && <span className="ml-2 text-gray-400">{t('common.loading')}</span>}
               </label>
 
               {!packagesLoading && packages.length === 0 && (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No hay paquetes pendientes de pago para este cliente.
+                  {t('payments.noPendingPackages')}
                 </p>
               )}
 
@@ -206,10 +208,10 @@ export default function PaymentFormPage() {
                             className="rounded"
                           />
                         </th>
-                        <th className="px-3 py-2 text-left">Tracking</th>
-                        <th className="px-3 py-2 text-left">Descripción</th>
-                        <th className="px-3 py-2 text-right">Total</th>
-                        <th className="px-3 py-2 text-center">Estado</th>
+                        <th className="px-3 py-2 text-left">{t('packages.tracking')}</th>
+                        <th className="px-3 py-2 text-left">{t('packages.description')}</th>
+                        <th className="px-3 py-2 text-right">{t('packages.total')}</th>
+                        <th className="px-3 py-2 text-center">{t('common.status')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -237,7 +239,7 @@ export default function PaymentFormPage() {
                           <td className="px-3 py-2 text-right">{formatCurrency(pkg.total)}</td>
                           <td className="px-3 py-2 text-center">
                             <Badge variant={pkg.isPaid ? 'success' : 'warning'}>
-                              {pkg.isPaid ? 'Pagado' : 'Pendiente'}
+                              {pkg.isPaid ? t('payments.paid') : t('payments.pending')}
                             </Badge>
                           </td>
                         </tr>
@@ -247,15 +249,15 @@ export default function PaymentFormPage() {
                 </div>
               )}
 
-              {/* Resumen de selección */}
+              {/* Selection summary */}
               {selectedPackages.length > 0 && (
                 <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm space-y-1">
                   <div className="flex justify-between">
-                    <span>Paquetes seleccionados:</span>
+                    <span>{t('payments.selectedPackages')}</span>
                     <span className="font-medium">{selectedPackages.length}</span>
                   </div>
                   <div className="flex justify-between text-base font-bold">
-                    <span>Total a pagar:</span>
+                    <span>{t('payments.totalToPay')}</span>
                     <span>{formatCurrency(selectedTotal)}</span>
                   </div>
                 </div>
@@ -263,9 +265,9 @@ export default function PaymentFormPage() {
             </div>
           )}
 
-          {/* Monto */}
+          {/* Amount */}
           <Input
-            label="Monto a pagar"
+            label={t('payments.amountLabel')}
             type="number"
             step="0.01"
             value={amount}
@@ -273,23 +275,23 @@ export default function PaymentFormPage() {
             required
           />
 
-          {/* Método */}
+          {/* Method */}
           <div>
-            <label className="block text-sm font-medium mb-1">Método de pago</label>
+            <label className="block text-sm font-medium mb-1">{t('payments.methodLabel')}</label>
             <select
               value={method}
               onChange={(e) => setMethod(e.target.value)}
               className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
             >
-              <option value="cash">Efectivo</option>
-              <option value="card">Tarjeta</option>
-              <option value="transfer">Transferencia</option>
+              <option value="cash">{t('payment.method.cash')}</option>
+              <option value="card">{t('payment.method.card')}</option>
+              <option value="transfer">{t('payment.method.transfer')}</option>
             </select>
           </div>
 
-          {/* Notas */}
+          {/* Notes */}
           <Input
-            label="Notas"
+            label={t('common.notes')}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
@@ -301,11 +303,11 @@ export default function PaymentFormPage() {
               disabled={selectedIds.size === 0}
             >
               {selectedIds.size === 0
-                ? 'Seleccioná al menos un paquete'
-                : `Pagar ${formatCurrency(Number(amount) || selectedTotal)}`}
+                ? t('payments.selectAtLeastOnePackage')
+                : t('payments.payAmount', { amount: formatCurrency(Number(amount) || selectedTotal) })}
             </Button>
             <Button type="button" variant="secondary" onClick={() => navigate('/payments')}>
-              Cancelar
+              {t('common.cancel')}
             </Button>
           </div>
         </form>
