@@ -217,6 +217,13 @@ const authController = {
     const result = await authService.verifyOtp({ email, code, masterConnection });
     apiResponse.success(res, result, 'OTP verified');
   }),
+
+  /** POST /auth/client/register — self-service client registration + auto-login */
+  register: asyncHandler(async (req, res) => {
+    const masterConnection = req.app.locals.masterConnection;
+    const result = await authService.registerClient({ ...req.body, masterConnection });
+    apiResponse.created(res, result, 'Registration successful');
+  }),
 };
 
 module.exports = authController;

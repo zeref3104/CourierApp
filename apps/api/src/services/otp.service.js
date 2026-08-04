@@ -113,4 +113,13 @@ class OtpService {
   }
 }
 
-module.exports = new OtpService();
+const otpService = new OtpService();
+
+// Share the code-identity primitives so auth.service.registerClient validates a
+// registration code with identical semantics (key format, hash, attempt limit)
+// without duplicating the constants (client-registration spec, design D5).
+otpService.buildKey = buildKey;
+otpService.sha256 = sha256;
+otpService.OTP_MAX_ATTEMPTS = OTP_MAX_ATTEMPTS;
+
+module.exports = otpService;

@@ -42,19 +42,25 @@ class ConnectionManager {
     // Wait for the connection to actually become ready (bounded) so the first
     // query on it never hits the mongoose bufferTimeout. If mongo is down or
     // slow, fail fast and close the half-open connection instead of leaking it.
+    let readyTimer;
     try {
       await Promise.race([
         connection.asPromise(),
         new Promise((_, reject) => {
-          setTimeout(
+          readyTimer = setTimeout(
             () => reject(new Error(`Timed out waiting for connection to ready (${tenant.dbName})`)),
             this.CONNECTION_READY_TIMEOUT_MS
           );
         }),
       ]);
     } catch (err) {
+      clearTimeout(readyTimer);
       await connection.close().catch(() => {});
       throw err;
+    } finally {
+      // Without this the 10s timer stays alive after a successful connect,
+      // keeping the event loop open (leaks in tests and server shutdown).
+      clearTimeout(readyTimer);
     }
 
     this._loadTenantModels(connection);
