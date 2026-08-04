@@ -78,6 +78,7 @@ async function tenantResolver(req, res, next) {
       plan: company.planId,
       license,
       settings: company.settings,
+      clientCodePrefix: company.clientCodePrefix,
     };
 
     // Get tenant DB connection

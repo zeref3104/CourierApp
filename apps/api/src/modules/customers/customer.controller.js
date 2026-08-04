@@ -3,8 +3,20 @@ const asyncHandler = require('../../utils/asyncHandler');
 const apiResponse = require('../../utils/apiResponse');
 
 const customerController = {
+  /**
+   * CustomerService needs the master context to mint global client codes
+   * ({PREFIX}-{SEQ}) via the master CompanyCounter (design D7).
+   */
+  _buildService(req) {
+    return new CustomerService(req.tenantModels, {
+      masterConnection: req.app.locals.masterConnection,
+      companyId: req.tenant?.id,
+      clientCodePrefix: req.tenant?.clientCodePrefix,
+    });
+  },
+
   create: asyncHandler(async (req, res) => {
-    const service = new CustomerService(req.tenantModels);
+    const service = customerController._buildService(req);
     const customer = await service.create(req.body, req.user.branchId);
     apiResponse.created(res, customer, 'Customer created');
   }),

@@ -46,6 +46,7 @@ async function auth(req, res, next) {
               dbName: company.databaseName,
               name: company.name,
               settings: company.settings,
+              clientCodePrefix: company.clientCodePrefix,
             };
             const tenantConnection = await connectionManager.getConnection(req.tenant);
             req.tenantConnection = tenantConnection;

@@ -3,7 +3,8 @@ const ConflictException = require('../../exceptions/ConflictException');
 const NotFoundException = require('../../exceptions/NotFoundException');
 const { eventBus, EVENTS } = require('../../events');
 const { nextSequence } = require('../../services/tenant/counter.service');
-const { generateCustomerCode } = require('@courier/helpers');
+const masterNextSequence = require('../../services/master/counter.service').nextSequence;
+const { generateCustomerCode, generateClientCode } = require('@courier/helpers');
 
 const PACKAGE_REPO_MODEL = 'Package';
 const PAYMENT_REPO_MODEL = 'Payment';
@@ -11,12 +12,19 @@ const PAYMENT_REPO_MODEL = 'Payment';
 class CustomerService {
   /**
    * @param {Object} models - req.tenantModels (all Mongoose models for this tenant)
+   * @param {Object} [options] - Master context for global client codes (design D7)
+   * @param {import('mongoose').Connection} [options.masterConnection] - Master DB connection
+   * @param {import('mongoose').Types.ObjectId} [options.companyId] - Current company id
+   * @param {string} [options.clientCodePrefix] - Current company prefix (set at provisioning)
    */
-  constructor(models) {
+  constructor(models, options = {}) {
     this.models = models;
     this.repository = new BaseRepository(models.Customer);
     this.packageRepo = new BaseRepository(models[PACKAGE_REPO_MODEL]);
     this.paymentRepo = new BaseRepository(models[PAYMENT_REPO_MODEL]);
+    this.masterConnection = options.masterConnection;
+    this.companyId = options.companyId;
+    this.clientCodePrefix = options.clientCodePrefix;
   }
 
   async create(data, branchId) {
@@ -104,6 +112,9 @@ class CustomerService {
     const customer = await this.repository.findById(id);
     if (!customer) throw new NotFoundException('Customer');
 
+    // The customer code is immutable once assigned (global identity, spec D7).
+    if (data.code) delete data.code;
+
     if (data.email && data.email !== customer.email) {
       const existing = await this.models.Customer.findOne({ email: data.email });
       if (existing) throw new ConflictException('Email already in use');
@@ -171,6 +182,15 @@ class CustomerService {
   }
 
   async _generateCode() {
+    // Global client codes (client-code-identity spec): sequence comes from the
+    // master CompanyCounter, so codes are distinct across all tenants.
+    if (this.masterConnection && this.companyId && this.clientCodePrefix) {
+      const seq = await masterNextSequence(this.masterConnection, this.companyId);
+      return generateClientCode(this.clientCodePrefix, seq);
+    }
+
+    // Legacy fallback (tenant counter + CUS- format) for companies without a
+    // prefix yet and for rollback contexts.
     const seq = await nextSequence(this.models, 'customer-code', {
       seedFrom: async () => {
         const last = await this.models.Customer.findOne({}).sort({ createdAt: -1 }).select('code');
