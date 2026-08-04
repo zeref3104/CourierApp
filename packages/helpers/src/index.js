@@ -28,7 +28,43 @@ function generateReceiptNumber({ seq, date } = {}) {
 }
 
 /**
+ * Suggest a client code prefix from a company name (client-code-identity spec).
+ * - Multi-word names: initials of each word, uppercased (e.g. "Rapid Box" -> "RB").
+ * - Single-word names: first 2 letters (e.g. "Fedex" -> "FE").
+ * - Non-letter characters are ignored; result is capped at 5 chars.
+ * Pure helper — the caller decides whether to use the suggestion or an admin override.
+ * @param {string} companyName
+ * @returns {string}
+ */
+function suggestClientPrefix(companyName) {
+  const words = String(companyName || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 1) {
+    const letters = words[0].replace(/[^A-Za-z]/g, '');
+    return letters.slice(0, 2).toUpperCase();
+  }
+  return words
+    .map((word) => word.replace(/[^A-Za-z]/g, '').charAt(0).toUpperCase())
+    .join('')
+    .slice(0, 5);
+}
+
+/**
+ * Generate a global client code in the format PREFIX-NNNNNN (client-code-identity spec).
+ * Pure formatter — the caller owns the atomic sequence counter (master CompanyCounter).
+ * @param {string} prefix - Platform-unique company prefix (2-5 uppercase letters)
+ * @param {number} seq - Sequence number (from the master CompanyCounter)
+ * @returns {string}
+ */
+function generateClientCode(prefix, seq) {
+  return `${prefix}-${String(seq).padStart(6, '0')}`;
+}
+
+/**
  * Generate a customer code in the format CUS-NNNN.
+ * @deprecated Use generateClientCode(prefix, seq) for new customers.
  * @param {number} seq - Sequence number (from the per-tenant Counter)
  * @returns {string}
  */
@@ -131,6 +167,8 @@ module.exports = {
   generateTrackingNumber,
   generateReceiptNumber,
   generateCustomerCode,
+  suggestClientPrefix,
+  generateClientCode,
   calculatePricing,
   formatCurrency,
   getTodayStart,

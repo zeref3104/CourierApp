@@ -21,3 +21,5 @@ export declare const NOTIFICATION_TYPES: string[];
 export declare const LICENSE_STATUSES: string[];
 export declare const TERMINAL_STATUSES: string[];
 export declare const ACTIVE_STATUSES: string[];
+export declare const CLIENT_CODE_PREFIX_PATTERN: string;
+export declare const CLIENT_CODE_PATTERN: string;
