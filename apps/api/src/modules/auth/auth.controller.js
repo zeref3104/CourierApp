@@ -201,6 +201,22 @@ const authController = {
     const result = await authService.changePassword(req.user._id, currentPassword, newPassword, models);
     apiResponse.success(res, result, 'Password changed successfully');
   }),
+
+  otpSend: asyncHandler(async (req, res) => {
+    const { email, lang } = req.body;
+    const masterConnection = req.app.locals.masterConnection;
+
+    const result = await authService.sendOtp({ email, lang, masterConnection });
+    apiResponse.success(res, result, 'OTP sent successfully');
+  }),
+
+  otpVerify: asyncHandler(async (req, res) => {
+    const { email, code } = req.body;
+    const masterConnection = req.app.locals.masterConnection;
+
+    const result = await authService.verifyOtp({ email, code, masterConnection });
+    apiResponse.success(res, result, 'OTP verified');
+  }),
 };
 
 module.exports = authController;

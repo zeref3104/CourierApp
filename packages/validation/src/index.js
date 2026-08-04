@@ -198,6 +198,42 @@ const updateCompanySchema = createCompanySchema
   .omit({ clientCodePrefix: true }) // prefix is set once and immutable (design D1/D7)
   .extend({ isActive: z.boolean().optional(), isSuspended: z.boolean().optional() });
 
+// --- Client registration OTP (client-registration spec, design D5/D6) ---
+// 6-digit numeric code, emailed and stored hashed on the master DB.
+const otpCode = z
+  .string()
+  .regex(/^\d{6}$/, 'OTP code must be exactly 6 digits');
+
+// POST /auth/client/otp/send — request a fresh code (60s cooldown enforced in service)
+const otpSendSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  lang: z.enum(['es', 'en', 'fr']).optional(),
+});
+
+// POST /auth/client/otp/verify — submit the emailed code (single-use)
+const otpVerifySchema = z.object({
+  email: z.string().email('Invalid email format'),
+  code: otpCode,
+});
+
+// POST /auth/client/register — create the client account once the OTP is verified
+const registerClientSchema = z.object({
+  companyId: z.string().min(1, 'companyId is required'),
+  branchId: z.string().min(1, 'branchId is required'),
+  name: z.string().min(2, 'Name must be at least 2 characters').max(50),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters').max(50),
+  phone: z.string().min(7, 'Phone must be at least 7 characters').max(20),
+  document: z.string().max(30).optional(),
+  email: z.string().email('Invalid email format'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Must contain an uppercase letter')
+    .regex(/[a-z]/, 'Must contain a lowercase letter')
+    .regex(/[0-9]/, 'Must contain a number'),
+  otpCode,
+});
+
 module.exports = {
   loginSchema,
   clientLoginSchema,
@@ -223,4 +259,7 @@ module.exports = {
   updateRateSchema,
   createCompanySchema,
   updateCompanySchema,
+  otpSendSchema,
+  otpVerifySchema,
+  registerClientSchema,
 };

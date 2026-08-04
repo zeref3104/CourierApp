@@ -4,6 +4,7 @@ const tokenService = require('./token.service');
 const connectionManager = require('../../services/tenant/connectionManager');
 const UnauthorizedException = require('../../exceptions/UnauthorizedException');
 const NotFoundException = require('../../exceptions/NotFoundException');
+const otpService = require('../../services/otp.service');
 const { eventBus, EVENTS } = require('../../events');
 
 class AuthService {
@@ -242,6 +243,15 @@ class AuthService {
     const user = await models.User.findById(userId).populate('roleId', 'name code permissions');
     if (!user) throw new NotFoundException('User');
     return user;
+  }
+
+  /** Delegate registration OTP flows to the master-DB OtpService (design D5/D6). */
+  async sendOtp({ email, lang, masterConnection }) {
+    return otpService.sendOtp({ email, lang, masterConnection });
+  }
+
+  async verifyOtp({ email, code, masterConnection }) {
+    return otpService.verifyOtp({ email, code, masterConnection });
   }
 }
 
