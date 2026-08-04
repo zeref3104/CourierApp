@@ -32,6 +32,11 @@ function generateReceiptNumber({ seq, date } = {}) {
  * - Multi-word names: initials of each word, uppercased (e.g. "Rapid Box" -> "RB").
  * - Single-word names: first 2 letters (e.g. "Fedex" -> "FE").
  * - Non-letter characters are ignored; result is capped at 5 chars.
+ * - The result is guaranteed to be at least 2 characters whenever the name
+ *   contains at least one letter: letter-sparse names ("1234 Shipping" -> "SH")
+ *   fall back to the name's letters, and a single-letter name is doubled
+ *   ("A" -> "AA"). A name with no letters at all yields "" — the caller must
+ *   then ask for an explicit prefix.
  * Pure helper — the caller decides whether to use the suggestion or an admin override.
  * @param {string} companyName
  * @returns {string}
@@ -41,14 +46,23 @@ function suggestClientPrefix(companyName) {
     .trim()
     .split(/\s+/)
     .filter(Boolean);
+  const lettersOf = (str) => str.replace(/[^A-Za-z]/g, '');
+  let prefix;
   if (words.length === 1) {
-    const letters = words[0].replace(/[^A-Za-z]/g, '');
-    return letters.slice(0, 2).toUpperCase();
+    prefix = lettersOf(words[0]).slice(0, 2).toUpperCase();
+  } else {
+    prefix = words
+      .map((word) => lettersOf(word).charAt(0).toUpperCase())
+      .join('')
+      .slice(0, 5);
   }
-  return words
-    .map((word) => word.replace(/[^A-Za-z]/g, '').charAt(0).toUpperCase())
-    .join('')
-    .slice(0, 5);
+  if (prefix.length < 2) {
+    const allLetters = words.map(lettersOf).join('').toUpperCase();
+    if (allLetters.length === 0) return '';
+    if (allLetters.length === 1) return allLetters.repeat(2);
+    return allLetters.slice(0, 2);
+  }
+  return prefix;
 }
 
 /**
