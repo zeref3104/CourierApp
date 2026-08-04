@@ -8,7 +8,7 @@
  */
 
 const { z } = require('zod');
-const { CLIENT_CODE_PREFIX_PATTERN } = require('@courier/constants');
+const { CLIENT_CODE_PREFIX_PATTERN, CLIENT_CODE_PATTERN } = require('@courier/constants');
 
 const PACKAGE_STATUSES = [
   'recibido_miami', 'almacen_miami', 'en_transito', 'llego_rd',
@@ -234,6 +234,22 @@ const registerClientSchema = z.object({
   otpCode,
 });
 
+// --- Client code login + body refresh (client-code-login spec, design D9/D10) ---
+// POST /auth/client/login — the global client code {PREFIX}-{SEQ} IS the login
+// identifier; an email is explicitly NOT accepted (auth-specs delta §2.1).
+const clientCodeLoginSchema = z.object({
+  code: z
+    .string()
+    .regex(new RegExp(CLIENT_CODE_PATTERN), 'Code must be a valid client code (e.g. CS-000001)'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+// POST /auth/client/refresh — refresh token travels in the request BODY for
+// React Native (no HTTP-only cookie jar, design D10).
+const clientRefreshSchema = z.object({
+  refreshToken: z.string().min(1, 'Refresh token is required'),
+});
+
 module.exports = {
   loginSchema,
   clientLoginSchema,
@@ -262,4 +278,6 @@ module.exports = {
   otpSendSchema,
   otpVerifySchema,
   registerClientSchema,
+  clientCodeLoginSchema,
+  clientRefreshSchema,
 };
