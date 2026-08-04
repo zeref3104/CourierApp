@@ -362,4 +362,46 @@ describe('POST /auth/client/register', () => {
     expect(await tenantConnection.model('Customer').countDocuments({})).toBe(0);
     expect(await tenantConnection.model('User').countDocuments({})).toBe(0);
   });
+
+  test('500: User creation failure triggers the compensating rollback — no Customer or User persists', async () => {
+    const company = await makeCompany({});
+    await makeLicense(company._id);
+    const branch = await makeBranch();
+    await makeClientRole();
+    const email = 'rollback@example.com';
+
+    await supertest(app).post('/auth/client/otp/send').send({ email });
+
+    // Force the isClient User creation to fail AFTER the Customer was written
+    // (design D8 compensating-delete path on the standalone deployment). The
+    // register flow resolves the tenant via connectionManager.getConnection,
+    // so the failure must be injected on THAT cached connection's User model.
+    const tenantConnectionForApp = await connectionManager.getConnection({
+      id: company._id,
+      slug: company.slug,
+      dbName: TEST_TENANT_DB,
+      plan: company.planId,
+    });
+    const User = tenantConnectionForApp.model('User');
+    const originalCreate = User.create;
+    User.create = jest.fn().mockRejectedValue(new Error('simulated user creation failure'));
+    let res;
+    try {
+      res = await supertest(app).post('/auth/client/register').send(registerPayload(company, branch, email));
+    } finally {
+      User.create = originalCreate;
+    }
+
+    expect(res.status).toBe(500);
+    expect(res.body.error.code).toBe('INTERNAL_ERROR');
+
+    // The compensating delete removed the already-created Customer and the
+    // User never persisted — no partial account survives.
+    expect(await tenantConnection.model('Customer').countDocuments({ email })).toBe(0);
+    expect(await tenantConnection.model('User').countDocuments({ email })).toBe(0);
+
+    // The OTP is NOT consumed because the account pair never persisted.
+    const otp = await masterConnection.model('OtpCode').findOne({ key: `${email}:register` });
+    expect(otp.consumedAt).toBeNull();
+  });
 });

@@ -73,7 +73,7 @@ Chain strategy: feature-branch-chain
 - [x] 2.6 **Atomic register** — `auth.service.registerClient()`: validate company active + branch belongs+active + OTP verified + email unique in tenant (409); create Customer (global code via master counter) + `isClient` User (client role) in tenant session transaction, compensating delete fallback on standalone. AC: 201 tokens; 409 dup email; 422 invalid OTP; no Customer/User persists on failure. Dep: 1.5, 1.8, 2.2, 2.5. PR 2b.
 - [x] 2.7 **Register endpoint** — `POST /auth/client/register` route + controller handler (registerClientSchema), returns `{accessToken, refreshToken, client:{id,code,name,email}}`. AC: auto-login on success per contract. Dep: 2.6. PR 2b.
 - [x] 2.8 **Slice 2 i18n** — OTP email + registration error copy keys in `apps/web/src/i18n/locales/{es,en,fr}.json`. AC: i18n gate passes. Dep: 2.4. PR 2b.
-- [ ] 2.9 **Test strategy Slice 2** — unit: OTP expiry/lockout/single-use/cooldown; integration (jest+supertest): register flow (company+branch+OTP → Customer+isClient User → tokens), dup email 409, invalid OTP 422, rollback on User failure, public endpoints scenarios. AC: suite green. Dep: 2.1–2.8. PR 2b.
+- [x] 2.9 **Test strategy Slice 2** — unit: OTP expiry/lockout/single-use/cooldown; integration (jest+supertest): register flow (company+branch+OTP → Customer+isClient User → tokens), dup email 409, invalid OTP 422, rollback on User failure, public endpoints scenarios. AC: suite green. Dep: 2.1–2.8. PR 2b.
 
 ## Slice 3 — Code Login + Tenant Resolution + RN Refresh + Panel Delta (PR 3)
 
