@@ -93,6 +93,128 @@ class AuthService {
     };
   }
 
+  /**
+   * Resolve the tenant for a global client code (client-code-login spec,
+   * design D9). Parses the prefix, looks up the company by the unique master
+   * `clientCodePrefix` index, enforces active/license, and opens the tenant
+   * connection — no email, no subdomain, no tenant header required.
+   *
+   * @returns {Promise<{company: Object, tenantConnection: Object}>}
+   */
+  async resolveTenantByCode(code, masterConnection) {
+    const match = String(code).trim().match(/^([A-Z]{2,5})-(\d{6})$/);
+    if (!match) throw new UnauthorizedException('Invalid client code format');
+    const prefix = match[1];
+
+    const Company = masterConnection.model('Company');
+    const License = masterConnection.model('License');
+    const company = await Company.findOne({ clientCodePrefix: prefix });
+    if (!company) throw new NotFoundException('Client code not found');
+
+    if (!company.isActive || company.isSuspended) {
+      throw new UnauthorizedException('Account locked. Try again later.');
+    }
+    const license = await License.findOne({
+      companyId: company._id,
+      status: { $in: ['active', 'trial'] },
+      endDate: { $gte: new Date() },
+    });
+    if (!license) {
+      throw new UnauthorizedException('Account locked. Try again later.');
+    }
+
+    const tenantConnection = await connectionManager.getConnection({
+      id: company._id,
+      slug: company.slug,
+      dbName: company.databaseName,
+      plan: company.planId,
+    });
+
+    return { company, tenantConnection };
+  }
+
+  /**
+   * Code-based client login (client-code-login spec, design D9): the global
+   * client code `{PREFIX}-{SEQ}` is the identifier and the tenant is derived
+   * from it. Reuses the staff lockout pattern (5 failed attempts -> 30 min).
+   *
+   * @returns {Promise<{accessToken, refreshToken, client: {id, code, name, company: {slug, name, prefix}}}>}
+   */
+  async loginByCode({ code, password, masterConnection }) {
+    const { company, tenantConnection } = await this.resolveTenantByCode(code, masterConnection);
+
+    const Customer = tenantConnection.model('Customer');
+    const User = tenantConnection.model('User');
+    const Role = tenantConnection.model('Role');
+
+    const customer = await Customer.findOne({ code });
+    if (!customer) throw new NotFoundException('Client code not found');
+
+    // The customer's linked isClient User (registered via /auth/client/register).
+    const user = await User.findOne({ clientId: customer._id, isClient: true }).select('+password');
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Invalid client credentials');
+    }
+
+    // Lockout check — same pattern as staff auth.service.login
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      throw new UnauthorizedException('Account locked. Try again later.');
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      user.failedLoginAttempts += 1;
+      if (user.failedLoginAttempts >= 5) {
+        user.lockedUntil = new Date(Date.now() + 30 * 60 * 1000);
+        user.failedLoginAttempts = 0;
+      }
+      await user.save();
+      throw new UnauthorizedException('Invalid client credentials');
+    }
+
+    // Reset lockout on success
+    user.failedLoginAttempts = 0;
+    user.lockedUntil = null;
+
+    const role = await Role.findById(user.roleId);
+    const refreshToken = tokenService.generateRefreshToken();
+    user.refreshToken = tokenService.hashToken(refreshToken);
+    // Fresh login starts a new rotation chain (design D10 replay detection).
+    user.previousRefreshTokenHash = null;
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Client-scoped access token (design: JWT claims unchanged, client path)
+    const accessToken = jwtService.generateAccessToken({
+      _id: user._id,
+      email: user.email,
+      role: role?.code || 'client',
+      roleId: user.roleId,
+      branchId: user.branchId,
+      permissions: role?.permissions || [],
+      clientId: customer._id,
+      isClient: true,
+      tenant: company.slug,
+    });
+
+    eventBus.emit(EVENTS.USER_LOGIN, { userId: user._id, models: { User, Role } });
+
+    return {
+      accessToken,
+      refreshToken,
+      client: {
+        id: customer._id,
+        code: customer.code,
+        name: customer.name,
+        company: {
+          slug: company.slug,
+          name: company.name,
+          prefix: company.clientCodePrefix,
+        },
+      },
+    };
+  }
+
   async superadminLogin(email, password, masterConnection) {
     const SuperAdmin = masterConnection.model('SuperAdmin');
     const admin = await SuperAdmin.findOne({ email, isActive: true }).select('+password');

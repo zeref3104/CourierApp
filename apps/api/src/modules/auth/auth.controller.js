@@ -125,31 +125,22 @@ const authController = {
     }, 'Login successful');
   }),
 
-  clientLogin: asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
+  /**
+   * POST /auth/client/login — code + password login (client-code-login spec,
+   * design D9). The tenant is resolved server-side from the code prefix; the
+   * response carries the client access + refresh tokens in the BODY (React
+   * Native has no cookie jar — design D10).
+   */
+  clientCodeLogin: asyncHandler(async (req, res) => {
+    const { code, password } = req.body;
     const masterConnection = req.app.locals.masterConnection;
 
-    // SuperAdmin bypass for client login
-    const SuperAdmin = masterConnection.model('SuperAdmin');
-    const superAdmin = await SuperAdmin.findOne({ email, isActive: true }).select('+password');
-    if (superAdmin) {
-      throw new UnauthorizedException('SuperAdmin cannot login as client');
-    }
-
-    // Normal client login — resolve tenant
-    const models = await resolveTenantModels(req, email);
-    const result = await authService.login(email, password, models, req.tenant?.slug);
-
-    if (!result.user.isClient) {
-      throw new UnauthorizedException('Invalid client credentials');
-    }
-
-    setRefreshCookie(res, result.refreshToken);
+    const result = await authService.loginByCode({ code, password, masterConnection });
 
     apiResponse.success(res, {
       accessToken: result.accessToken,
-      mustChangePassword: result.mustChangePassword,
-      user: result.user,
+      refreshToken: result.refreshToken,
+      client: result.client,
     }, 'Login successful');
   }),
 
