@@ -8,6 +8,7 @@ const PUBLIC_ROUTES = [
   '/auth/client/login',
   '/auth/client/otp',
   '/auth/client/register',
+  '/auth/client/refresh',
   '/auth/refresh',
   '/auth/password',
   '/auth/superadmin/login',

@@ -85,8 +85,9 @@ describe('ClientService.getPackageByTracking (amountToPay gating)', () => {
 
     expect('amountToPay' in result).toBe(false);
     expect('pickupBranch' in result).toBe(false);
-    // the raw total must not leak into a public amount field
-    expect(result.total).toBe(999.99);
+    // the raw amount fields must not leak for non-disponible packages
+    expect('total' in result).toBe(false);
+    expect('cost' in result).toBe(false);
   });
 
   test('disponible package is found by tracking scoped to the customer', async () => {

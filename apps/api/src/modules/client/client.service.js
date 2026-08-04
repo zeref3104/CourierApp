@@ -58,13 +58,18 @@ class ClientService {
 
     // Amount-to-pay disclosure (client-panel-specs delta): the stored total +
     // pickup branch are exposed ONLY when the package is sitting at `disponible`.
-    // Any other status leaks none of that (no amount-to-pay field at all).
+    // Any other status leaks none of that (no amount-to-pay field and the raw
+    // amount-bearing fields are stripped from the response).
     if (pkg.status === 'disponible') {
       const branch = pkg.branchId;
       result.amountToPay = pkg.total;
       result.pickupBranch = branch
         ? { id: branch._id, name: branch.name, address: branch.address }
         : null;
+    } else {
+      for (const field of ['total', 'cost', 'shippingCost', 'tax', 'declaredValue']) {
+        delete result[field];
+      }
     }
 
     return result;
