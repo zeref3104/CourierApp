@@ -18,11 +18,20 @@ const companySchema = new mongoose.Schema(
       timezone: { type: String, default: 'America/Santo_Domingo' },
     },
     planId: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan' },
+    // Global client identity prefix (client-code-identity spec): platform-unique,
+    // 2-5 uppercase letters, set once at provisioning and never modified.
+    // Sparse unique index: legacy companies created before this field have no value.
+    clientCodePrefix: {
+      type: String,
+      trim: true,
+      match: [/^[A-Z]{2,5}$/, 'Client code prefix must be 2-5 uppercase letters'],
+    },
   },
   { timestamps: true }
 );
 
 companySchema.index({ slug: 1 }, { unique: true });
 companySchema.index({ databaseName: 1 }, { unique: true });
+companySchema.index({ clientCodePrefix: 1 }, { unique: true, sparse: true });
 
 module.exports = companySchema;

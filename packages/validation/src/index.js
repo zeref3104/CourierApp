@@ -177,6 +177,27 @@ const createRateSchema = z.object({
 
 const updateRateSchema = createRateSchema.partial();
 
+// --- Company (company.schema.js) ---
+// Payload for superadmin company provisioning. clientCodePrefix is optional:
+// when absent, the service suggests one from the company name (design D2).
+const createCompanySchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters').max(100),
+  slug: z.string().min(2, 'Slug must be at least 2 characters').max(50),
+  email: z.string().email('Invalid email format'),
+  adminEmail: z.string().email('Invalid admin email format'),
+  phone: z.string().optional(),
+  planId: z.string().optional(),
+  clientCodePrefix: z
+    .string()
+    .regex(/^[A-Z]{2,5}$/, 'Client code prefix must be 2-5 uppercase letters')
+    .optional(),
+});
+
+const updateCompanySchema = createCompanySchema
+  .partial()
+  .omit({ clientCodePrefix: true }) // prefix is set once and immutable (design D1/D7)
+  .extend({ isActive: z.boolean().optional(), isSuspended: z.boolean().optional() });
+
 module.exports = {
   loginSchema,
   clientLoginSchema,
@@ -200,4 +221,6 @@ module.exports = {
   createPaymentSchema,
   createRateSchema,
   updateRateSchema,
+  createCompanySchema,
+  updateCompanySchema,
 };
