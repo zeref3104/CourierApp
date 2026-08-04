@@ -12,6 +12,7 @@ jest.mock('../../src/services/tenant/connectionManager', () => ({
 const companyService = require('../../src/modules/companies/company.service');
 const connectionManager = require('../../src/services/tenant/connectionManager');
 const ConflictException = require('../../src/exceptions/ConflictException');
+const ValidationException = require('../../src/exceptions/ValidationException');
 
 const BASE_PAYLOAD = {
   name: 'Rapid Box',
@@ -103,6 +104,33 @@ describe('CompanyService.create clientCodePrefix', () => {
     expect(
       created.some((role) => role.code === 'client' && role.isSystem === true)
     ).toBe(true);
+  });
+
+  test('maps a duplicate-prefix index race (11000) to ConflictException', async () => {
+    // Both concurrent creates pass the pre-check; the sparse unique index
+    // rejects the loser with 11000 — that must surface as 409, not 500.
+    const companyCreate = jest.fn().mockRejectedValue({
+      code: 11000,
+      keyValue: { clientCodePrefix: 'RB' },
+    });
+    const masterConnection = makeMasterConnection({ companyCreate });
+
+    await expect(
+      companyService.create({ ...BASE_PAYLOAD }, masterConnection)
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  test('rejects a letter-sparse company name with a clear validation error', async () => {
+    // A name without letters ("1234") cannot yield a 2-5 letter suggestion;
+    // the admin must provide the prefix explicitly instead of an opaque 400.
+    const masterConnection = makeMasterConnection();
+
+    await expect(
+      companyService.create({ ...BASE_PAYLOAD, name: '1234' }, masterConnection)
+    ).rejects.toBeInstanceOf(ValidationException);
+
+    const Company = masterConnection.model('Company');
+    expect(Company.create).not.toHaveBeenCalled();
   });
 });
 
