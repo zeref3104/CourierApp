@@ -6,10 +6,13 @@ const TenantNotFoundException = require('../exceptions/TenantNotFoundException')
 const PUBLIC_ROUTES = [
   '/auth/login',
   '/auth/client/login',
+  '/auth/client/otp',
+  '/auth/client/register',
   '/auth/refresh',
   '/auth/password',
   '/auth/superadmin/login',
   '/superadmin/login',
+  '/public',
 ];
 
 async function tenantResolver(req, res, next) {
