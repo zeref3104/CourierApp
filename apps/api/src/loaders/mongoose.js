@@ -20,6 +20,7 @@ async function initMaster() {
   connection.model('TenantUserIndex', require('../models/master/TenantUserIndex'));
   connection.model('BlacklistedToken', require('../models/master/BlacklistedToken'));
   connection.model('CompanyCounter', require('../models/master/CompanyCounter'));
+  connection.model('OtpCode', require('../models/master/OtpCode'));
 
   connection.on('error', (err) => {
     logger.error('Master DB connection error:', err);
