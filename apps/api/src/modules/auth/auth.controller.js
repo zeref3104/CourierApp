@@ -170,6 +170,26 @@ const authController = {
     apiResponse.success(res, { accessToken: result.accessToken }, 'Token refreshed');
   }),
 
+  /**
+   * POST /auth/client/refresh — React Native in-body refresh (design D10). The
+   * refresh token arrives in the request BODY (no HTTP-only cookie) and both
+   * the new access + refresh tokens return in the body. Shares authService
+   * rotation + replay protection with the cookie path.
+   */
+  clientRefresh: asyncHandler(async (req, res) => {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      throw new UnauthorizedException('No refresh token');
+    }
+    const masterConnection = req.app.locals.masterConnection;
+    const result = await authService.refresh(refreshToken, masterConnection);
+
+    apiResponse.success(res, {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    }, 'Token refreshed');
+  }),
+
   logout: asyncHandler(async (req, res) => {
     const refreshToken = req.cookies.refreshToken;
     const masterConnection = req.app.locals.masterConnection;

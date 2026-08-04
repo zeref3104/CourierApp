@@ -282,14 +282,21 @@ class AuthService {
 
     const session = await this._findSession(hashedToken, masterConnection);
     if (!session) {
+      // Replay detection (design D10): a token that matches a user's
+      // PREVIOUS (rotated-out) hash means an old token was reused. Revoke ALL
+      // of the client's tokens and force a re-login.
+      const replaySession = await this._findReplaySession(hashedToken, masterConnection);
+      if (replaySession) {
+        await this._revokeClientTokens(replaySession, refreshToken, masterConnection);
+      }
       throw new UnauthorizedException('Invalid refresh token');
     }
 
     const { user, connection, tenantSlug } = session;
 
-    // Rotation: revoke old, issue new
+    // Rotation: revoke old, issue new (replay-aware, design D10)
     const newRefreshToken = tokenService.generateRefreshToken();
-    user.refreshToken = tokenService.hashToken(newRefreshToken);
+    tokenService.rotate(user, newRefreshToken);
     await user.save();
 
     const role = await connection.model('Role').findById(user.roleId);
@@ -356,6 +363,65 @@ class AuthService {
     return null;
   }
 
+  /**
+   * Find a user whose PREVIOUS refresh-token hash matches the submitted token —
+   * i.e. detect that an already-rotated token is being reused (replay, D10).
+   * Mirrors _findSession but searches previousRefreshTokenHash.
+   */
+  async _findReplaySession(hashedToken, masterConnection) {
+    for (const { dbName, connection } of connectionManager.listConnections()) {
+      const user = await connection
+        .model('User')
+        .findOne({ previousRefreshTokenHash: hashedToken, isActive: true })
+        .select('+previousRefreshTokenHash +refreshToken');
+      if (user) {
+        return { user, connection };
+      }
+    }
+
+    const Company = masterConnection.model('Company');
+    const companies = await Company.find({ isActive: true }).select('slug databaseName').lean();
+    for (const company of companies) {
+      const connection = await connectionManager.getConnection({
+        id: company._id,
+        slug: company.slug,
+        dbName: company.databaseName,
+      });
+      const user = await connection
+        .model('User')
+        .findOne({ previousRefreshTokenHash: hashedToken, isActive: true })
+        .select('+previousRefreshTokenHash +refreshToken');
+      if (user) {
+        return { user, connection };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Replay response (design D10): revoke ALL of a client's refresh tokens so a
+   * compromised/rotated-out token cannot authenticate again, then blacklist the
+   * reused raw token. For a client user this nulls every device session sharing
+   * the same clientId; for a staff user (no clientId) only their own token.
+   */
+  async _revokeClientTokens(session, rawToken, masterConnection) {
+    const { user, connection } = session;
+    const User = connection.model('User');
+    if (user.clientId) {
+      await User.updateMany(
+        { clientId: user.clientId },
+        { $set: { refreshToken: null, previousRefreshTokenHash: null } }
+      );
+    } else {
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { refreshToken: null, previousRefreshTokenHash: null } }
+      );
+    }
+    await tokenService.blacklist(rawToken, masterConnection);
+  }
+
   async logout(userId, refreshToken, models, masterConnection, { isSuperAdmin = false } = {}) {
     if (refreshToken) {
       await tokenService.blacklist(refreshToken, masterConnection);
@@ -363,7 +429,7 @@ class AuthService {
     if (isSuperAdmin) {
       await masterConnection.model('SuperAdmin').findByIdAndUpdate(userId, { refreshToken: null });
     } else if (models) {
-      await models.User.findByIdAndUpdate(userId, { refreshToken: null });
+      await models.User.findByIdAndUpdate(userId, { refreshToken: null, previousRefreshTokenHash: null });
     }
     eventBus.emit(EVENTS.USER_LOGOUT, { userId });
   }
@@ -508,6 +574,7 @@ class AuthService {
     // contract returns them in the body for React Native).
     const refreshToken = tokenService.generateRefreshToken();
     user.refreshToken = tokenService.hashToken(refreshToken);
+    user.previousRefreshTokenHash = null; // fresh login starts a clean rotation chain (D10)
     await user.save();
 
     const accessToken = jwtService.generateAccessToken({

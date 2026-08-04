@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema(
     mustChangePassword: { type: Boolean, default: false },
     lastLogin: { type: Date },
     refreshToken: { type: String, select: false },
+    previousRefreshTokenHash: { type: String, select: false },
     failedLoginAttempts: { type: Number, default: 0 },
     lockedUntil: { type: Date },
   },
