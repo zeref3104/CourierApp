@@ -21,14 +21,19 @@ const BASE_PAYLOAD = {
 };
 
 function makeTenantConnection() {
+  const roleModel = {
+    findOne: jest.fn((query) =>
+      Promise.resolve(query && query.code === 'admin' ? { _id: 'role-admin' } : null)
+    ),
+    create: jest.fn().mockResolvedValue({}),
+  };
+  const sharedModel = {
+    findOne: jest.fn().mockResolvedValue(null),
+    create: jest.fn().mockResolvedValue({}),
+    insertMany: jest.fn().mockResolvedValue([]),
+  };
   return {
-    model: () => ({
-      findOne: jest.fn((query) =>
-        Promise.resolve(query && query.code === 'admin' ? { _id: 'role-admin' } : null)
-      ),
-      create: jest.fn().mockResolvedValue({}),
-      insertMany: jest.fn().mockResolvedValue([]),
-    }),
+    model: jest.fn((name) => (name === 'Role' ? roleModel : sharedModel)),
   };
 }
 
@@ -84,6 +89,20 @@ describe('CompanyService.create clientCodePrefix', () => {
     await expect(
       companyService.create({ ...BASE_PAYLOAD }, masterConnection)
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  test('upserts the canonical client role at provisioning', async () => {
+    const tenantConnection = makeTenantConnection();
+    connectionManager.getConnection.mockResolvedValue(tenantConnection);
+    const masterConnection = makeMasterConnection();
+
+    await companyService.create({ ...BASE_PAYLOAD }, masterConnection);
+
+    const roleModel = tenantConnection.model('Role');
+    const created = roleModel.create.mock.calls.flat();
+    expect(
+      created.some((role) => role.code === 'client' && role.isSystem === true)
+    ).toBe(true);
   });
 });
 
