@@ -47,6 +47,25 @@ describe('suggestClientPrefix', () => {
       expect(suggestion).toMatch(new RegExp(CLIENT_CODE_PREFIX_PATTERN));
     }
   });
+
+  test('letter-sparse multi-word names still yield at least 2 characters', () => {
+    expect(suggestClientPrefix('1234 Shipping')).toBe('SH');
+  });
+
+  test('a single-letter name is doubled into a valid 2-character prefix', () => {
+    expect(suggestClientPrefix('A')).toBe('AA');
+  });
+
+  test('a name with no letters yields an empty suggestion (caller must provide one)', () => {
+    expect(suggestClientPrefix('1234')).toBe('');
+  });
+
+  test('every suggestion that contains letters matches the prefix pattern', () => {
+    const names = ['1234 Shipping', 'A', '42nd Street Logistics', 'Q'];
+    for (const name of names) {
+      expect(suggestClientPrefix(name)).toMatch(new RegExp(CLIENT_CODE_PREFIX_PATTERN));
+    }
+  });
 });
 
 describe('generateClientCode', () => {
