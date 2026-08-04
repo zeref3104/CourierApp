@@ -54,7 +54,20 @@ class ClientService {
       .populate('changedBy', 'name')
       .lean();
 
-    return { ...pkg.toObject(), history };
+    const result = { ...pkg.toObject(), history };
+
+    // Amount-to-pay disclosure (client-panel-specs delta): the stored total +
+    // pickup branch are exposed ONLY when the package is sitting at `disponible`.
+    // Any other status leaks none of that (no amount-to-pay field at all).
+    if (pkg.status === 'disponible') {
+      const branch = pkg.branchId;
+      result.amountToPay = pkg.total;
+      result.pickupBranch = branch
+        ? { id: branch._id, name: branch.name, address: branch.address }
+        : null;
+    }
+
+    return result;
   }
 
   async getProfile(customerId) {
@@ -92,7 +105,7 @@ class ClientService {
     const { page = 1, limit = 20 } = query;
     const repo = new BaseRepository(this.models.Notification);
     return repo.findAll(
-      { customerId, channel: 'in_app' },
+      { customerId, channel: { $in: ['in_app', 'push'] } },
       { page: Number(page), limit: Number(limit), sort: { createdAt: -1 } }
     );
   }
