@@ -4,7 +4,7 @@ const authController = require('../auth/auth.controller');
 const validate = require('../../middlewares/validate');
 const auth = require('../../middlewares/auth');
 const { authorizeSuperAdmin } = require('../../middlewares/rbac');
-const { superadminLoginSchema } = require('@courier/validation');
+const { superadminLoginSchema, createCompanySchema, updateCompanySchema } = require('@courier/validation');
 
 // Public superadmin login (no auth required)
 router.post('/login', validate(superadminLoginSchema), authController.superadminLogin);
@@ -14,9 +14,9 @@ router.use(auth);
 router.use(authorizeSuperAdmin);
 
 router.get('/companies', companyController.findAll);
-router.post('/companies', companyController.create);
+router.post('/companies', validate(createCompanySchema), companyController.create);
 router.get('/companies/:id', companyController.findById);
-router.patch('/companies/:id', companyController.update);
+router.patch('/companies/:id', validate(updateCompanySchema), companyController.update);
 router.delete('/companies/:id', companyController.delete);
 
 router.get('/plans', async (req, res) => {
