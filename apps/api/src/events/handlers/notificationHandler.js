@@ -1,6 +1,40 @@
 const logger = require('../../logs/logger');
 const emailService = require('../../services/notifications/email.service');
+const { emailTemplates } = require('../../services/notifications/emailTemplates');
 const socketHandler = require('./socketHandler');
+
+// Settings cache for email-send reads. Mirrors PackageService._getSetting so
+// the per-tenant `language` Setting is read once per TTL instead of per email.
+const settingsCache = new Map();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const SUPPORTED_LANGUAGES = ['es', 'en', 'fr'];
+
+async function getSetting(models, key, defaultValue) {
+  const cacheKey = `${models.Setting.db.name}:${key}`;
+  const cached = settingsCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.value;
+  }
+
+  const setting = await models.Setting.findOne({ key });
+  const value = setting ? setting.value : defaultValue;
+
+  settingsCache.set(cacheKey, { value, timestamp: Date.now() });
+  return value;
+}
+
+/**
+ * Resolve the tenant language for customer emails (defaults to Spanish).
+ * Email sending is best-effort, so any read error falls back to 'es'.
+ */
+async function getTenantLanguage(pkg) {
+  try {
+    const lang = await getSetting(pkg.model('Setting'), 'language', 'es');
+    return SUPPORTED_LANGUAGES.includes(lang) ? lang : 'es';
+  } catch {
+    return 'es';
+  }
+}
 
 /**
  * Look up customer email from the pkg model connection.
@@ -100,7 +134,9 @@ const notificationHandler = {
       // Notify customer (email) — best-effort
       const { email, name } = await getCustomerEmail(pkg);
       if (email) {
-        await emailService.sendPackageStatusNotification(email, pkg.tracking, toStatus, name || 'Cliente');
+        const lang = await getTenantLanguage(pkg);
+        const customerName = name || (emailTemplates[lang] || emailTemplates.es).fallbackCustomerName;
+        await emailService.sendPackageStatusNotification(email, pkg.tracking, toStatus, customerName, lang);
       }
     } catch (err) {
       logger.error('Notification handler error:', err);
@@ -136,7 +172,9 @@ const notificationHandler = {
         // Notify customer (email) — best-effort
         const { email, name } = await getCustomerEmail(pkg);
         if (email) {
-          await emailService.sendDeliveryNotification(email, pkg.tracking, delivery.receiverName, name || 'Cliente');
+          const lang = await getTenantLanguage(pkg);
+          const customerName = name || (emailTemplates[lang] || emailTemplates.es).fallbackCustomerName;
+          await emailService.sendDeliveryNotification(email, pkg.tracking, delivery.receiverName, customerName, lang);
         }
       }
     } catch (err) {

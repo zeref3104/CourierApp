@@ -32,6 +32,11 @@ class PackageService {
     // Assign the user's branch when the caller doesn't provide one, so every
     // package gets a branch (branch-scoped queries and labels depend on it).
     if (!data.branchId && branchId) data.branchId = branchId;
+    // Last resort: fall back to the main branch so no package is left orphaned.
+    if (!data.branchId) {
+      const mainBranch = await this.models.Branch.findOne({ isMainBranch: true }).select('_id').lean();
+      if (mainBranch) data.branchId = mainBranch._id;
+    }
 
     const pricePerLb = await this._getSetting('price_per_lb', 0);
     const minimumPrice = await this._getSetting('minimum_price', 0);

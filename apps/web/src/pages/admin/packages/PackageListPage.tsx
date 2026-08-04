@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { packageService } from '../../../services/package.service';
+import { branchService } from '../../../services/branch.service';
+import { RootState } from '../../../store';
 import { Card } from '../../../components/ui/Card';
 import { Table } from '../../../components/ui/Table';
 import { Pagination } from '../../../components/ui/Pagination';
@@ -20,18 +23,26 @@ const FILTER_STATUSES = ['recibido_miami', 'en_transito', 'disponible', 'entrega
 
 export default function PackageListPage() {
   const { t } = useTranslation();
+  const user = useSelector((state: RootState) => state.auth.user);
   const [packages, setPackages] = useState<any[]>([]);
   const [meta, setMeta] = useState<any>({ page: 1, totalPages: 1, total: 0 });
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [branchFilter, setBranchFilter] = useState(user?.branchId || '');
+  const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const debouncedSearch = useDebounce(search, 300);
+
+  useEffect(() => {
+    branchService.findAll({ limit: 100 }).then((r) => setBranches(r.data)).catch(() => {});
+  }, []);
 
   const load = async (page = 1) => {
     setLoading(true);
     try {
       const params: any = { page, limit: 20, search: debouncedSearch };
       if (statusFilter) params.status = statusFilter;
+      if (branchFilter) params.branchId = branchFilter;
       const res = await packageService.findAll(params);
       setPackages(res.data);
       if (res.meta) setMeta(res.meta);
@@ -40,7 +51,7 @@ export default function PackageListPage() {
     }
   };
 
-  useEffect(() => { load(1); }, [debouncedSearch, statusFilter]);
+  useEffect(() => { load(1); }, [debouncedSearch, statusFilter, branchFilter]);
 
   useLiveRefresh('socket:packages-changed', () => load(meta.page));
 
@@ -74,11 +85,21 @@ export default function PackageListPage() {
             <option key={status} value={status}>{t(`status.${status}`, { defaultValue: status })}</option>
           ))}
         </select>
+        <select
+          value={branchFilter}
+          onChange={(e) => setBranchFilter(e.target.value)}
+          className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+        >
+          <option value="">{t('packages.allBranches')}</option>
+          {branches.filter((b: any) => b.isActive !== false).map((b: any) => (
+            <option key={b._id} value={b._id}>{b.name}</option>
+          ))}
+        </select>
       </div>
 
       <Card padding={false}>
         <Table
-          headers={[t('packages.tracking'), t('common.customer'), t('packages.weight'), t('packages.total'), t('common.status'), t('common.created'), t('common.actions')]}
+          headers={[t('packages.tracking'), t('common.customer'), t('common.branch'), t('packages.weight'), t('packages.total'), t('common.status'), t('common.created'), t('common.actions')]}
           items={packages}
           loading={loading}
           renderRow={(p) => (
@@ -90,6 +111,10 @@ export default function PackageListPage() {
               <div className="flex justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400">{t('common.customer')}</span>
                 <span>{p.customerId?.name} {p.customerId?.lastName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('common.branch')}</span>
+                <span>{p.branchId?.name || '—'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400">{t('packages.weight')}</span>

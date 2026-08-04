@@ -118,6 +118,7 @@ const updateSettingsSchema = z.object({
   minimum_price: z.number().min(0).optional(),
   tax_rate: z.number().min(0).max(100).optional(),
   logo_url: z.string().optional(),
+  language: z.enum(['es', 'en', 'fr']).optional(),
 }).strict();
 
 // --- Customer (customer.schema.js) ---

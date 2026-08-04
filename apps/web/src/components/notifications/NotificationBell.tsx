@@ -6,6 +6,7 @@ import { RootState } from '../../store';
 import { setUnreadCount } from '../../store/slices/notificationSlice';
 import { notificationService } from '../../services/notification.service';
 import { onSocketEvent } from '../../services/socketEvents';
+import { getNotificationText } from '../../i18n/notificationText';
 import { formatRelative } from '../../utils/formatDate';
 
 export default function NotificationBell() {
@@ -130,26 +131,29 @@ export default function NotificationBell() {
             )}
             {!loading &&
               !error &&
-              list.map((n) => (
-                <button
-                  key={n._id}
-                  onClick={() => handleMarkAsRead(n._id)}
-                  className={`w-full text-left px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                    n.isRead ? 'opacity-60' : ''
-                  }`}
-                >
-                  <div className="flex items-start gap-2">
-                    {!n.isRead && (
-                      <span className="mt-1.5 w-2 h-2 rounded-full bg-primary-500 flex-shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{n.title}</p>
-                      <p className="text-xs text-gray-500 line-clamp-2">{n.message}</p>
-                      <p className="text-xs text-gray-400 mt-1">{formatRelative(n.createdAt)}</p>
+              list.map((n) => {
+                const { title, message } = getNotificationText(n, t);
+                return (
+                  <button
+                    key={n._id}
+                    onClick={() => handleMarkAsRead(n._id)}
+                    className={`w-full text-left px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                      n.isRead ? 'opacity-60' : ''
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      {!n.isRead && (
+                        <span className="mt-1.5 w-2 h-2 rounded-full bg-primary-500 flex-shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{title}</p>
+                        <p className="text-xs text-gray-500 line-clamp-2">{message}</p>
+                        <p className="text-xs text-gray-400 mt-1">{formatRelative(n.createdAt)}</p>
+                      </div>
                     </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
           </div>
         </div>
       )}

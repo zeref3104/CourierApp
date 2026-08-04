@@ -19,12 +19,21 @@ class CustomerService {
     this.paymentRepo = new BaseRepository(models[PAYMENT_REPO_MODEL]);
   }
 
-  async create(data) {
+  async create(data, branchId) {
     const code = await this._generateCode();
 
     if (data.email) {
       const existing = await this.models.Customer.findOne({ email: data.email });
       if (existing) throw new ConflictException('Email already in use');
+    }
+
+    // Assign the user's branch when the caller doesn't provide one, so every
+    // customer gets a branch (branch-scoped queries depend on it).
+    if (!data.branchId && branchId) data.branchId = branchId;
+    // Last resort: fall back to the main branch so no customer is left orphaned.
+    if (!data.branchId) {
+      const mainBranch = await this.models.Branch.findOne({ isMainBranch: true }).select('_id').lean();
+      if (mainBranch) data.branchId = mainBranch._id;
     }
 
     const customer = await this.repository.create({ ...data, code });
@@ -91,13 +100,18 @@ class CustomerService {
     return { ...customer.toObject(), ...summary };
   }
 
-  async update(id, data) {
+  async update(id, data, branchId) {
     const customer = await this.repository.findById(id);
     if (!customer) throw new NotFoundException('Customer');
 
     if (data.email && data.email !== customer.email) {
       const existing = await this.models.Customer.findOne({ email: data.email });
       if (existing) throw new ConflictException('Email already in use');
+    }
+
+    // A fixed-branch user never moves a customer out of their branch.
+    if (branchId && data.branchId && data.branchId !== branchId) {
+      data.branchId = branchId;
     }
 
     return this.repository.updateById(id, data);

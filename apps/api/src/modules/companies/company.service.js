@@ -96,6 +96,7 @@ class CompanyService {
       { key: 'minimum_price', value: 0 },
       { key: 'tax_rate', value: 18 },
       { key: 'currency', value: 'DOP' },
+      { key: 'language', value: 'es' },
     ]);
 
     // Generate a random secure password

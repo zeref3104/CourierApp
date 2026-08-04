@@ -5,7 +5,7 @@ const apiResponse = require('../../utils/apiResponse');
 const customerController = {
   create: asyncHandler(async (req, res) => {
     const service = new CustomerService(req.tenantModels);
-    const customer = await service.create(req.body);
+    const customer = await service.create(req.body, req.user.branchId);
     apiResponse.created(res, customer, 'Customer created');
   }),
 
@@ -23,7 +23,7 @@ const customerController = {
 
   update: asyncHandler(async (req, res) => {
     const service = new CustomerService(req.tenantModels);
-    const customer = await service.update(req.params.id, req.body);
+    const customer = await service.update(req.params.id, req.body, req.user.branchId);
     apiResponse.success(res, customer, 'Customer updated');
   }),
 

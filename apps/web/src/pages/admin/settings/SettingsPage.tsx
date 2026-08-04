@@ -4,6 +4,7 @@ import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import LanguageSwitcher from '../../../components/settings/LanguageSwitcher';
+import { setLanguage, isSupportedLanguage, type SupportedLanguage } from '../../../i18n';
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   DOP: 'RD$',
@@ -34,6 +35,11 @@ export default function SettingsPage() {
         const s = r.data.data || {};
         const currency = s.currency || 'DOP';
         localStorage.setItem('currency', currency);
+        // Adopt the tenant language only when the user has no explicit local
+        // preference, keeping the localStorage-first flow intact.
+        if (isSupportedLanguage(s.language) && !localStorage.getItem('language')) {
+          setLanguage(s.language);
+        }
         setForm({
           company_name: s.company_name || '',
           company_address: s.company_address || '',
@@ -69,6 +75,15 @@ export default function SettingsPage() {
       alert(err.response?.data?.error?.message || t('settings.saveError'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLanguageChange = async (lang: SupportedLanguage) => {
+    try {
+      const { default: api } = await import('../../../config/axios');
+      await api.patch('/settings', { language: lang });
+    } catch {
+      // The language still applies locally; backend sync is best-effort.
     }
   };
 
@@ -135,7 +150,7 @@ export default function SettingsPage() {
 
       <Card className="mt-6">
         <h2 className="text-lg font-semibold mb-4">{t('settings.language')}</h2>
-        <LanguageSwitcher />
+        <LanguageSwitcher onLanguageChange={handleLanguageChange} />
       </Card>
     </div>
   );

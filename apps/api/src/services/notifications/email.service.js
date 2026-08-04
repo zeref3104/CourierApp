@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const logger = require('../../logs/logger');
+const { emailTemplates, interpolate } = require('./emailTemplates');
 
 /**
  * Email notification service.
@@ -72,22 +73,16 @@ class EmailService {
   /**
    * Send package status update notification.
    */
-  async sendPackageStatusNotification(email, tracking, status, customerName) {
-    const statusLabels = {
-      disponible: 'listo para recoger',
-      entregado: 'entregado',
-      en_transito: 'en tránsito hacia República Dominicana',
-      llego_rd: 'llegó a República Dominicana',
-      cancelado: 'cancelado',
-      almacen_rd: 'en almacén RD',
-      almacen_miami: 'en almacén Miami',
-      recibido_miami: 'recibido en Miami',
-      en_reparto: 'en reparto',
-    };
+  async sendPackageStatusNotification(email, tracking, status, customerName, lang = 'es') {
+    const templates = emailTemplates[lang] || emailTemplates.es;
+    const label = templates.statusLabels[status] || status;
 
-    const label = statusLabels[status] || status;
-    const subject = `Actualización de tu envío #${tracking}`;
-    const text = `Hola ${customerName},\n\nTu paquete #${tracking} está ${label}.\n\nPuedes hacer seguimiento en tu panel de cliente.\n\nGracias por confiar en nosotros.`;
+    const subject = interpolate(templates.packageStatus.subject, { tracking });
+    const text = interpolate(templates.packageStatus.body, {
+      tracking,
+      customerName,
+      statusLabel: label,
+    });
 
     return this.sendNotification({ to: email, subject, text });
   }
@@ -95,9 +90,15 @@ class EmailService {
   /**
    * Send delivery completion notification.
    */
-  async sendDeliveryNotification(email, tracking, receiverName, customerName) {
-    const subject = `Tu paquete #${tracking} fue entregado`;
-    const text = `Hola ${customerName},\n\nTu paquete #${tracking} fue entregado a ${receiverName}.\n\nGracias por confiar en nosotros.`;
+  async sendDeliveryNotification(email, tracking, receiverName, customerName, lang = 'es') {
+    const templates = emailTemplates[lang] || emailTemplates.es;
+
+    const subject = interpolate(templates.deliveryCompleted.subject, { tracking });
+    const text = interpolate(templates.deliveryCompleted.body, {
+      tracking,
+      receiverName,
+      customerName,
+    });
 
     return this.sendNotification({ to: email, subject, text });
   }
