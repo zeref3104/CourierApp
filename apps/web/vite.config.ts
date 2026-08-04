@@ -15,7 +15,7 @@ export default defineConfig({
     // Vite serves them raw (no CJS->ESM conversion) unless pre-bundled.
     // Without this, named imports like STATUS_TRANSITIONS fail at runtime:
     // "does not provide an export named '...'".
-    include: ['@courier/constants'],
+    include: ['@courier/constants', '@courier/helpers'],
   },
   server: {
     port: 5173,

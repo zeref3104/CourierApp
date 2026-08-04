@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { suggestClientPrefix } from '@courier/helpers';
+import { CLIENT_CODE_PREFIX_PATTERN } from '@courier/constants';
 import { companyService, Plan, CreateCompanyData } from '../../../services/company.service';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
@@ -17,7 +19,11 @@ export default function CreateCompanyPage() {
     adminEmail: '',
     phone: '',
     planId: '',
+    clientCodePrefix: '',
   });
+  // Once the admin edits the prefix manually, stop re-suggesting it on name
+  // changes so their override is preserved (design D2 — server stays authoritative).
+  const [prefixTouched, setPrefixTouched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState<{ adminEmail: string; defaultPassword: string } | null>(null);
@@ -32,11 +38,19 @@ export default function CreateCompanyPage() {
       ...prev,
       name,
       slug: prev.slug === generateSlug(prev.name) ? generateSlug(name) : prev.slug,
+      clientCodePrefix: !prefixTouched ? suggestClientPrefix(name) : prev.clientCodePrefix,
     }));
   };
 
   const generateSlug = (val: string) =>
     val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+  // Normalize the override to uppercase letters, max 5 chars — the server
+  // validates the final value against ^[A-Z]{2,5}$.
+  const handlePrefixChange = (value: string) => {
+    setPrefixTouched(true);
+    setForm((prev) => ({ ...prev, clientCodePrefix: value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5) }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +58,11 @@ export default function CreateCompanyPage() {
 
     if (!form.planId) {
       setError(t('companies.selectPlanRequired'));
+      return;
+    }
+
+    if (form.clientCodePrefix && !new RegExp(CLIENT_CODE_PREFIX_PATTERN).test(form.clientCodePrefix)) {
+      setError(t('companies.clientCodePrefixInvalid'));
       return;
     }
 
@@ -56,6 +75,7 @@ export default function CreateCompanyPage() {
         adminEmail: form.adminEmail,
         phone: form.phone || undefined,
         planId: form.planId,
+        clientCodePrefix: form.clientCodePrefix || undefined,
       };
       const res = await companyService.create(data);
       setSuccess({
@@ -90,6 +110,17 @@ export default function CreateCompanyPage() {
             placeholder={t('companies.namePlaceholder')}
             required
           />
+
+          <Input
+            label={t('companies.clientCodePrefix')}
+            value={form.clientCodePrefix}
+            onChange={(e) => handlePrefixChange(e.target.value)}
+            placeholder={t('companies.clientCodePrefixPlaceholder')}
+            maxLength={5}
+          />
+          <p className="text-xs text-gray-500 -mt-3">
+            {t('companies.clientCodePrefixHint')}
+          </p>
 
           <Input
             label={t('companies.slugLabel')}
