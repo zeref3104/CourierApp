@@ -85,6 +85,7 @@ class CompanyService {
       { code: 'reception', name: 'Recepción', description: 'Front desk reception', permissions: [] },
       { code: 'warehouse', name: 'Almacén', description: 'Warehouse staff', permissions: [] },
       { code: 'delivery', name: 'Entrega', description: 'Delivery dispatcher', permissions: [] },
+      { code: 'client', name: 'Cliente', description: 'Self-service client', permissions: [] },
     ];
 
     const Role = tenantConnection.model('Role');
