@@ -53,6 +53,15 @@ const NOTIFICATION_TYPES = ['package_status', 'payment', 'system', 'delivery'];
 
 const LICENSE_STATUSES = ['active', 'expired', 'cancelled', 'trial'];
 
+/**
+ * Global client identity code (client-code-identity spec):
+ * - Prefix: platform-unique, admin-configured, 2-5 uppercase letters (e.g. "CS").
+ * - Full code: `{PREFIX}-{SEQ}` with a zero-padded 6-digit sequence (e.g. "CS-000001").
+ * Values are regex source strings (no delimiters) so callers can build RegExp freely.
+ */
+const CLIENT_CODE_PREFIX_PATTERN = '^[A-Z]{2,5}$';
+const CLIENT_CODE_PATTERN = '^[A-Z]{2,5}-\\d{6}$';
+
 const TERMINAL_STATUSES = [PACKAGE_STATUSES.ENTREGADO, PACKAGE_STATUSES.CANCELADO, PACKAGE_STATUSES.EXTRAVIADO];
 const ACTIVE_STATUSES = [
   PACKAGE_STATUSES.RECIBIDO_MIAMI,
@@ -77,4 +86,6 @@ module.exports = {
   LICENSE_STATUSES,
   TERMINAL_STATUSES,
   ACTIVE_STATUSES,
+  CLIENT_CODE_PREFIX_PATTERN,
+  CLIENT_CODE_PATTERN,
 };
