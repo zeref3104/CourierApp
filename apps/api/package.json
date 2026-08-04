@@ -10,7 +10,9 @@
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "test:integration": "jest --config jest.integration.config.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "migrate:client-codes": "node scripts/migrate-client-codes.js",
+    "migrate:client-codes:dry-run": "node scripts/migrate-client-codes.js --dry-run"
   },
   "dependencies": {
     "@courier/constants": "^1.0.0",
