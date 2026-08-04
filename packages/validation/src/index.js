@@ -8,6 +8,7 @@
  */
 
 const { z } = require('zod');
+const { CLIENT_CODE_PREFIX_PATTERN } = require('@courier/constants');
 
 const PACKAGE_STATUSES = [
   'recibido_miami', 'almacen_miami', 'en_transito', 'llego_rd',
@@ -188,7 +189,7 @@ const createCompanySchema = z.object({
   planId: z.string().optional(),
   clientCodePrefix: z
     .string()
-    .regex(/^[A-Z]{2,5}$/, 'Client code prefix must be 2-5 uppercase letters')
+    .regex(new RegExp(CLIENT_CODE_PREFIX_PATTERN), 'Client code prefix must be 2-5 uppercase letters')
     .optional(),
 });
 

@@ -4,6 +4,7 @@
   "description": "Shared Zod validation schemas for Courier SaaS Platform",
   "main": "src/index.js",
   "dependencies": {
+    "@courier/constants": "^1.0.0",
     "zod": "^3.22.0"
   },
   "private": true
