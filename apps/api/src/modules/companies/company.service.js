@@ -5,6 +5,7 @@ const ConflictException = require('../../exceptions/ConflictException');
 const NotFoundException = require('../../exceptions/NotFoundException');
 const connectionManager = require('../../services/tenant/connectionManager');
 const logger = require('../../logs/logger');
+const { suggestClientPrefix } = require('@courier/helpers');
 
 class CompanyService {
   getCompanyModel(masterConnection) {
@@ -27,10 +28,20 @@ class CompanyService {
     const existing = await Company.findOne({ slug: data.slug });
     if (existing) throw new ConflictException('Company slug already exists');
 
+    // Client code prefix (client-code-identity spec, D2): the admin may provide
+    // one; otherwise the system suggests initials from the company name. It is
+    // platform-unique and set once — the sparse unique index backs this up.
+    const clientCodePrefix = data.clientCodePrefix || suggestClientPrefix(data.name);
+    if (clientCodePrefix) {
+      const prefixOwner = await Company.findOne({ clientCodePrefix });
+      if (prefixOwner) throw new ConflictException('Client code prefix already in use');
+    }
+
     const databaseName = `courier_${data.slug}`;
 
     const company = await Company.create({
       ...data,
+      clientCodePrefix,
       databaseName,
       settings: {
         defaultCurrency: 'DOP',
