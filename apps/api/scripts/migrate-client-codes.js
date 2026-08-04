@@ -104,7 +104,8 @@ async function migrateClientCodes({ masterConnection, getTenantConnection, dryRu
 
     // 3. Rewrite legacy CUS- codes, oldest first, using the master counter.
     //    Dry-run simulates the sequence locally so no real numbers are consumed.
-    const Customer = getTenantConnection(company).model('Customer');
+    const connection = await getTenantConnection(company);
+    const Customer = connection.model('Customer');
     const legacyCustomers = await Customer.find({ code: LEGACY_CODE_PATTERN }).sort({ createdAt: 1 });
     let nextSeq = counter ? counter.seq : 0;
     for (const customer of legacyCustomers) {
