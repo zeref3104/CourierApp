@@ -22,7 +22,6 @@ const otpCodeSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-otpCodeSchema.index({ key: 1 }, { unique: true });
 // TTL index: doc is removed automatically once its code has expired.
 otpCodeSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
