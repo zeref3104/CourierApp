@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 const logger = require('../../logs/logger');
 
+// Interval handles are kept at module scope: the singleton is frozen
+// (Object.freeze below) to prevent accidental mutation, but class methods are
+// always strict-mode, so assigning this.sweepInterval inside _startSweep would
+// throw "Cannot assign to read only property" on the frozen instance.
+let sweepInterval = null;
+
 class ConnectionManager {
   constructor() {
     this.connections = new Map();
@@ -10,7 +16,6 @@ class ConnectionManager {
     this.SWEEP_INTERVAL_MS = 10 * 60 * 1000;
     this.SWEEP_MIN_CONNECTIONS = 20;
     this.cleanupInterval = null;
-    this.sweepInterval = null;
   }
 
   async getConnection(tenant) {
@@ -74,10 +79,10 @@ class ConnectionManager {
   }
 
   _startSweep() {
-    if (this.sweepInterval) return;
-    this.sweepInterval = setInterval(() => this._sweepIdleConnections(), this.SWEEP_INTERVAL_MS);
+    if (sweepInterval) return;
+    sweepInterval = setInterval(() => this._sweepIdleConnections(), this.SWEEP_INTERVAL_MS);
     // Do not keep the process alive solely for the sweep.
-    this.sweepInterval.unref();
+    sweepInterval.unref();
   }
 
   _sweepIdleConnections() {
@@ -156,9 +161,9 @@ class ConnectionManager {
 
   async closeAll() {
     logger.info(`Closing all connections (${this.connections.size})...`);
-    if (this.sweepInterval) {
-      clearInterval(this.sweepInterval);
-      this.sweepInterval = null;
+    if (sweepInterval) {
+      clearInterval(sweepInterval);
+      sweepInterval = null;
     }
     const promises = [];
     for (const [name, entry] of this.connections) {
