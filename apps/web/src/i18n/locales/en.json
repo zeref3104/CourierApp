@@ -354,5 +354,7 @@
   "otp.cooldownError": "Please wait before requesting another code",
   "otp.sent": "Code sent",
   "otp.expired": "The code has expired. Request a new one.",
-  "otp.locked": "Too many attempts. Request a new code."
+  "otp.locked": "Too many attempts. Request a new code.",
+  "push.packageStatusTitle": "Your package {{statusLabel}}",
+  "push.packageStatusBody": "Package #{{tracking}}: {{statusLabel}}"
 }
