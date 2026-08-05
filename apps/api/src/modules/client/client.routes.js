@@ -32,6 +32,6 @@ router.patch('/profile', clientController.updateProfile);
 router.get('/notifications', clientController.notifications);
 router.get('/miami-address', clientController.miamiAddress);
 router.get('/code', clientController.code);
-router.post('/device-token', validate(deviceTokenSchema), clientController.registerDeviceToken);
+router.post('/device-token', validate(deviceTokenSchema, 'body', 422), clientController.registerDeviceToken);
 
 module.exports = router;
