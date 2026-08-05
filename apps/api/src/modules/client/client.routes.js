@@ -1,6 +1,8 @@
 const router = require('express').Router();
 const clientController = require('./client.controller');
 const auth = require('../../middlewares/auth');
+const validate = require('../../middlewares/validate');
+const { deviceTokenSchema } = require('@courier/validation');
 const PlanEnforcer = require('../../services/planEnforcer');
 
 /**
@@ -30,5 +32,6 @@ router.patch('/profile', clientController.updateProfile);
 router.get('/notifications', clientController.notifications);
 router.get('/miami-address', clientController.miamiAddress);
 router.get('/code', clientController.code);
+router.post('/device-token', validate(deviceTokenSchema), clientController.registerDeviceToken);
 
 module.exports = router;

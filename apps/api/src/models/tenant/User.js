@@ -1,5 +1,28 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { DEVICE_PLATFORMS, PUSH_TOKEN_PATTERN } = require('@courier/constants');
+
+/**
+ * Embedded push device-token records (push-notifications spec, design D11).
+ * token is unique across the platform and validated against the Expo push
+ * token format; only the android|ios platforms are accepted. `createdAt`
+ * marks first registration; `updatedAt` is refreshed when a token is
+ * re-registered (idempotent dedup in ClientService).
+ */
+const deviceTokenSchema = new mongoose.Schema(
+  {
+    token: {
+      type: String,
+      required: true,
+      unique: true,
+      match: new RegExp(PUSH_TOKEN_PATTERN),
+    },
+    platform: { type: String, enum: DEVICE_PLATFORMS, required: true },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
 
 const userSchema = new mongoose.Schema(
   {
@@ -18,6 +41,7 @@ const userSchema = new mongoose.Schema(
     previousRefreshTokenHash: { type: String, select: false },
     failedLoginAttempts: { type: Number, default: 0 },
     lockedUntil: { type: Date },
+    deviceTokens: { type: [deviceTokenSchema], default: [] },
   },
   { timestamps: true }
 );

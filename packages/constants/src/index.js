@@ -62,6 +62,17 @@ const LICENSE_STATUSES = ['active', 'expired', 'cancelled', 'trial'];
 const CLIENT_CODE_PREFIX_PATTERN = '^[A-Z]{2,5}$';
 const CLIENT_CODE_PATTERN = '^[A-Z]{2,5}-\\d{6}$';
 
+/**
+ * Push/device-token contract (push-notifications spec, design D11).
+ * - DEVICE_PLATFORMS: platforms the mobile app reports for a device token
+ *   (the Expo push token belongs to one physical device on one OS).
+ * - PUSH_TOKEN_PATTERN: Expo push service token format `ExponentPushToken[...]`
+ *   with a base64url-safe payload (`[A-Za-z0-9_-]`). Regex source string (no
+ *   delimiters) so callers build RegExp freely, matching the code patterns.
+ */
+const DEVICE_PLATFORMS = ['android', 'ios'];
+const PUSH_TOKEN_PATTERN = '^ExponentPushToken\\[[A-Za-z0-9_-]+\\]$';
+
 const TERMINAL_STATUSES = [PACKAGE_STATUSES.ENTREGADO, PACKAGE_STATUSES.CANCELADO, PACKAGE_STATUSES.EXTRAVIADO];
 const ACTIVE_STATUSES = [
   PACKAGE_STATUSES.RECIBIDO_MIAMI,
@@ -88,4 +99,6 @@ module.exports = {
   ACTIVE_STATUSES,
   CLIENT_CODE_PREFIX_PATTERN,
   CLIENT_CODE_PATTERN,
+  DEVICE_PLATFORMS,
+  PUSH_TOKEN_PATTERN,
 };

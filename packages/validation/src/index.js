@@ -8,7 +8,12 @@
  */
 
 const { z } = require('zod');
-const { CLIENT_CODE_PREFIX_PATTERN, CLIENT_CODE_PATTERN } = require('@courier/constants');
+const {
+  CLIENT_CODE_PREFIX_PATTERN,
+  CLIENT_CODE_PATTERN,
+  DEVICE_PLATFORMS,
+  PUSH_TOKEN_PATTERN,
+} = require('@courier/constants');
 
 const PACKAGE_STATUSES = [
   'recibido_miami', 'almacen_miami', 'en_transito', 'llego_rd',
@@ -250,6 +255,16 @@ const clientRefreshSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token is required'),
 });
 
+// POST /client/device-token — register a push device for the authenticated
+// client (push-notifications spec, design D11). token must be an Expo push
+// token (rejected 422 otherwise); platform is android|ios.
+const deviceTokenSchema = z.object({
+  token: z
+    .string()
+    .regex(new RegExp(PUSH_TOKEN_PATTERN), 'Token must be a valid Expo push token (ExponentPushToken[...])'),
+  platform: z.enum(DEVICE_PLATFORMS),
+});
+
 module.exports = {
   loginSchema,
   clientLoginSchema,
@@ -280,4 +295,5 @@ module.exports = {
   registerClientSchema,
   clientCodeLoginSchema,
   clientRefreshSchema,
+  deviceTokenSchema,
 };

@@ -1,5 +1,8 @@
 const BaseRepository = require('../../repositories/base/base.repository');
 const NotFoundException = require('../../exceptions/NotFoundException');
+const HttpException = require('../../exceptions/HttpException');
+
+const MAX_DEVICE_TOKENS = 5;
 
 class ClientService {
   constructor(models) {
@@ -113,6 +116,40 @@ class ClientService {
       { customerId, channel: { $in: ['in_app', 'push'] } },
       { page: Number(page), limit: Number(limit), sort: { createdAt: -1 } }
     );
+  }
+
+  /**
+   * Register a push device token on the client's User (push-notifications spec,
+   * design D11). Embedded `deviceTokens[{token,platform,createdAt,updatedAt}]`
+   * are deduplicated by token (idempotent re-registration refreshes platform +
+   * updatedAt) and capped at 5 distinct devices (HTTP 400 beyond that).
+   */
+  async registerDeviceToken(userId, { token, platform }) {
+    const user = await this.models.User.findById(userId);
+    if (!user) throw new NotFoundException('User');
+
+    user.deviceTokens = user.deviceTokens || [];
+
+    const existing = user.deviceTokens.find((dt) => dt.token === token);
+    if (existing) {
+      existing.platform = platform;
+      existing.updatedAt = new Date();
+      await user.save();
+      return { registered: true, devices: user.deviceTokens.length };
+    }
+
+    if (user.deviceTokens.length >= MAX_DEVICE_TOKENS) {
+      throw new HttpException(400, `Device token limit reached: max ${MAX_DEVICE_TOKENS}`, 'DEVICE_LIMIT_REACHED');
+    }
+
+    user.deviceTokens.push({
+      token,
+      platform,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await user.save();
+    return { registered: true, devices: user.deviceTokens.length };
   }
 }
 
