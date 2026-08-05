@@ -87,13 +87,13 @@ Chain strategy: feature-branch-chain
 
 ## Slice 4 — Push Notifications + Device Tokens (PR 4)
 
-- [ ] 4.1 **deviceTokens on User** — add `deviceTokens: [{ token (Expo regex), platform enum android|ios, createdAt }]` to `apps/api/src/models/tenant/User.js`. AC: schema validates token format. Dep: 1.2. PR 4.
-- [ ] 4.2 **Device-token schema** — add `deviceTokenSchema` to `packages/validation/src/index.js` (uses `PUSH_TOKEN_PATTERN`). AC: non-Expo token rejected 422. Dep: 1.2. PR 4.
-- [ ] 4.3 **Register endpoint** — `POST /client/device-token` route in `apps/api/src/modules/client/client.routes.js` + service: dedup by token (idempotent), cap 5 distinct (400). AC: 201 `{registered, devices}`; dup idempotent; 6th distinct token 400. Dep: 4.1, 4.2. PR 4.
-- [ ] 4.4 **Push service** — create `apps/api/src/services/notifications/push.service.js`: `expo-server-sdk` v6 via dynamic `import()` (CJS-safe), `sendToTokens(tokens, payload)` best-effort. AC: no `ERR_REQUIRE_ESM`; send errors logged. Dep: —. PR 4.
-- [ ] 4.5 **Push dispatch** — `apps/api/src/events/handlers/notificationHandler.js` `onPackageStatusChanged`: after `in_app` write, push to all customer device tokens with payload `{to,title,body,data:{type:'package_status',packageId,trackingNumber,status,companySlug},sound:'default'}` (< 4 KB), try/catch log-only. AC: in_app + push per token; no tokens → no push; Expo error logged, flow succeeds. Dep: 4.3, 4.4. PR 4.
-- [ ] 4.6 **Slice 4 i18n** — push title/body (es/en/fr) via template convention in 3 web locale files. AC: i18n gate passes. Dep: 4.5. PR 4.
-- [ ] 4.7 **Test strategy Slice 4** — unit: push.service payload + dynamic import; integration: status change writes in_app + push per token, no tokens skip, Expo error tolerated, device-token register/dedup/cap. AC: suite green. Dep: 4.1–4.6. PR 4.
+- [x] 4.1 **deviceTokens on User** — add `deviceTokens: [{ token (Expo regex), platform enum android|ios, createdAt }]` to `apps/api/src/models/tenant/User.js`. AC: schema validates token format. Dep: 1.2. PR 4.
+- [x] 4.2 **Device-token schema** — add `deviceTokenSchema` to `packages/validation/src/index.js` (uses `PUSH_TOKEN_PATTERN`). AC: non-Expo token rejected 422. Dep: 1.2. PR 4.
+- [x] 4.3 **Register endpoint** — `POST /client/device-token` route in `apps/api/src/modules/client/client.routes.js` + service: dedup by token (idempotent), cap 5 distinct (400). AC: 201 `{registered, devices}`; dup idempotent; 6th distinct token 400. Dep: 4.1, 4.2. PR 4.
+- [x] 4.4 **Push service** — create `apps/api/src/services/notifications/push.service.js`: `expo-server-sdk` v6 via dynamic `import()` (CJS-safe), `sendToTokens(tokens, payload)` best-effort. AC: no `ERR_REQUIRE_ESM`; send errors logged. Dep: —. PR 4.
+- [x] 4.5 **Push dispatch** — `apps/api/src/events/handlers/notificationHandler.js` `onPackageStatusChanged`: after `in_app` write, push to all customer device tokens with payload `{to,title,body,data:{type:'package_status',packageId,trackingNumber,status,companySlug},sound:'default'}` (< 4 KB), try/catch log-only. AC: in_app + push per token; no tokens → no push; Expo error logged, flow succeeds. Dep: 4.3, 4.4. PR 4.
+- [x] 4.6 **Slice 4 i18n** — push title/body (es/en/fr) via template convention in 3 web locale files. AC: i18n gate passes. Dep: 4.5. PR 4.
+- [x] 4.7 **Test strategy Slice 4** — unit: push.service payload + dynamic import; integration: status change writes in_app + push per token, no tokens skip, Expo error tolerated, device-token register/dedup/cap. AC: suite green. Dep: 4.1–4.6. PR 4.
 
 ## Slice 5 — Expo Mobile App (PR 5a → PR 5b → PR 5c)
 
