@@ -35,6 +35,11 @@ function currentLanguage(): SupportedLanguage {
   return DEFAULT_LANGUAGE;
 }
 
+/** Active language — used e.g. to pass the device language to OTP emails (D6). */
+export function getCurrentLanguage(): SupportedLanguage {
+  return currentLanguage();
+}
+
 /** Translate a dotted key with optional {{param}} interpolation. */
 export function t(key: string, params?: Record<string, string | number>): string {
   const lang = currentLanguage();

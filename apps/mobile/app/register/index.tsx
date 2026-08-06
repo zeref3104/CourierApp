@@ -9,7 +9,7 @@ import {
 } from '@/api/clientAuth';
 import { useAuthStore } from '@/stores/authStore';
 import { useTenantStore } from '@/stores/tenantStore';
-import { t } from '@/i18n';
+import { t, getCurrentLanguage } from '@/i18n';
 
 /**
  * Registration + OTP flow (client-registration spec). Sequence:
@@ -75,7 +75,8 @@ export default function RegisterScreen() {
     }
     setSubmitting(true);
     try {
-      await sendOtp(email.trim(), 'en');
+      // Send the OTP email in the app's active language (design D6).
+      await sendOtp(email.trim(), getCurrentLanguage());
       setStep('otp');
     } catch (err) {
       const status = (err as AxiosError)?.response?.status;
