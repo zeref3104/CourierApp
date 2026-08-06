@@ -1,13 +1,18 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { fetchPackages, PackageSummary, PaginationMeta } from '@/api/clientPanel';
+import { usePackagesList } from '@/lib/packagesList';
 import { t } from '@/i18n';
 
 /**
  * Package list (client-panel-specs, task 5.5): GET /client/packages with a
  * status filter (chips) + pagination. Only the tracking, description and
  * status label are shown — amount fields are never rendered in the list.
+ *
+ * The list state (filter/items/meta/loading + pagination) lives in
+ * `usePackagesList`, whose generation guard (verify-5b W1) drops any page
+ * fetch that resolves after a filter switch, so stale items/meta can never be
+ * appended onto a different filter's list.
  */
 const FILTERS = [
   { value: undefined, labelKey: 'packages.filter.all' },
@@ -19,44 +24,12 @@ const FILTERS = [
 
 export default function PackagesScreen() {
   const router = useRouter();
-  const [filter, setFilter] = useState<string | undefined>(undefined);
-  const [items, setItems] = useState<PackageSummary[]>([]);
-  const [meta, setMeta] = useState<PaginationMeta | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState(false);
-
-  const loadFirst = useCallback(async (status?: string) => {
-    try {
-      setLoading(true);
-      setError(false);
-      const page = await fetchPackages({ status, page: 1, limit: 20 });
-      setItems(page.items);
-      setMeta(page.meta);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { state, changeFilter, loadFirst, loadMore } = usePackagesList();
+  const { filter, items, loading, loadingMore, error } = state;
 
   useEffect(() => {
     loadFirst(filter);
   }, [filter, loadFirst]);
-
-  const loadMore = async () => {
-    if (loadingMore || !meta || meta.page >= meta.totalPages) return;
-    try {
-      setLoadingMore(true);
-      const page = await fetchPackages({ status: filter, page: meta.page + 1, limit: 20 });
-      setItems((prev) => [...prev, ...page.items]);
-      setMeta(page.meta);
-    } catch {
-      // Best-effort: keep the current list; user can retry by scrolling again.
-    } finally {
-      setLoadingMore(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -75,7 +48,7 @@ export default function PackagesScreen() {
             <Pressable
               key={f.labelKey}
               style={[styles.chip, active && styles.chipActive]}
-              onPress={() => setFilter(f.value)}
+              onPress={() => changeFilter(f.value)}
             >
               <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(f.labelKey)}</Text>
             </Pressable>
