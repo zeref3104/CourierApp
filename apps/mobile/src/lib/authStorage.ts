@@ -78,7 +78,16 @@ export async function loadPushToken(): Promise<string | null> {
   return AsyncStorage.getItem(ASYNC_KEYS.pushToken);
 }
 
+/**
+ * Clear the last registered Expo push token. Called on logout so a different
+ * user signing in on the SAME device re-registers its own push token (the
+ * once-per-token skip would otherwise suppress registration for the new user).
+ */
+export async function clearPushToken(): Promise<void> {
+  await AsyncStorage.removeItem(ASYNC_KEYS.pushToken);
+}
+
 /** Nuke every locally persisted auth/tenant value in one shot (logout). */
 export async function clearAllAuth(): Promise<void> {
-  await Promise.all([clearRefreshToken(), clearTenant()]);
+  await Promise.all([clearRefreshToken(), clearTenant(), clearPushToken()]);
 }

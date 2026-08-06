@@ -17,8 +17,12 @@ export type SupportedLanguage = 'es' | 'en' | 'fr';
 
 export const SUPPORTED_LANGUAGES: SupportedLanguage[] = ['es', 'en', 'fr'];
 
-/** Device-locale sniff that safely falls back to the default. */
-export const DEFAULT_LANGUAGE: SupportedLanguage = 'en';
+/**
+ * Spec default is Spanish (the backend OTP email / web UI default to `es`).
+ * The device-locale sniff upgrades to the user's language when it matches a
+ * supported locale, and safely falls back to `es`.
+ */
+export const DEFAULT_LANGUAGE: SupportedLanguage = 'es';
 
 const resources: Record<SupportedLanguage, Record<string, string>> = { es, en, fr };
 
@@ -27,12 +31,37 @@ function lookup(locale: Record<string, string>, key: string): string | undefined
   return locale[key];
 }
 
+/** Normalize a BCP-47 locale tag (e.g. "en-US") to a supported language. */
+function normalizeLocale(tag: string | null | undefined): SupportedLanguage | null {
+  if (!tag) return null;
+  const lang = tag.split('-')[0].toLowerCase();
+  return SUPPORTED_LANGUAGES.includes(lang as SupportedLanguage) ? (lang as SupportedLanguage) : null;
+}
+
+/**
+ * Detect the device language via expo-localization when available (native
+ * runtime). Best-effort: any failure falls back to the spec default `es`.
+ */
+function detectDeviceLanguage(): SupportedLanguage | null {
+  try {
+    const { getLocales } = require('expo-localization') as {
+      getLocales?: () => Array<{ languageCode?: string | null }>;
+    };
+    if (typeof getLocales !== 'function') return null;
+    const locales = getLocales();
+    const first = locales?.[0]?.languageCode ?? null;
+    return normalizeLocale(first);
+  } catch {
+    return null;
+  }
+}
+
 function currentLanguage(): SupportedLanguage {
-  // Expo constants is not always loaded in unit tests; default to `en`.
+  // Tests may pin a language explicitly; that always wins.
   if (typeof globalThis !== 'undefined' && (globalThis as any).__COURIER_I18N_LANG__) {
     return (globalThis as any).__COURIER_I18N_LANG__ as SupportedLanguage;
   }
-  return DEFAULT_LANGUAGE;
+  return detectDeviceLanguage() ?? DEFAULT_LANGUAGE;
 }
 
 /** Active language — used e.g. to pass the device language to OTP emails (D6). */

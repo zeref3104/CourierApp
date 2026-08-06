@@ -1,7 +1,7 @@
 import es from '../locales/es.json';
 import en from '../locales/en.json';
 import fr from '../locales/fr.json';
-import { t, setI18nLanguage } from '@/i18n';
+import { t, setI18nLanguage, DEFAULT_LANGUAGE } from '@/i18n';
 
 /**
  * Full i18n system tests (task 5.9): the three locale files must stay key-
@@ -14,6 +14,10 @@ describe('i18n locale alignment', () => {
     const esKeys = Object.keys(es).sort();
     expect(Object.keys(en).sort()).toEqual(esKeys);
     expect(Object.keys(fr).sort()).toEqual(esKeys);
+  });
+
+  it('default language is es (spec default, matches web + OTP email D6)', () => {
+    expect(DEFAULT_LANGUAGE).toBe('es');
   });
 
   it('every value carries the {{param}} placeholders used by the app', () => {
