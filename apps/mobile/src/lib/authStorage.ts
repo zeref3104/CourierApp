@@ -12,6 +12,10 @@ export const SECURE_KEYS = {
 
 export const ASYNC_KEYS = {
   tenant: '@courier/tenant',
+  // Last successfully-registered Expo push token. Kept so re-registration is
+  // skipped when the device token did not change ("register exactly once per
+  // token", task 5.7); the backend dedups anyway.
+  pushToken: '@courier/push-token',
 } as const;
 
 /**
@@ -62,6 +66,16 @@ export async function loadTenant<T>(): Promise<T | null> {
 /** Clear the tenant context (logout). */
 export async function clearTenant(): Promise<void> {
   await AsyncStorage.removeItem(ASYNC_KEYS.tenant);
+}
+
+/** Persist the last registered Expo push token (AsyncStorage — not a secret). */
+export async function savePushToken(token: string): Promise<void> {
+  await AsyncStorage.setItem(ASYNC_KEYS.pushToken, token);
+}
+
+/** Read the last registered Expo push token, or null when never registered. */
+export async function loadPushToken(): Promise<string | null> {
+  return AsyncStorage.getItem(ASYNC_KEYS.pushToken);
 }
 
 /** Nuke every locally persisted auth/tenant value in one shot (logout). */
