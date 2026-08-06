@@ -105,3 +105,42 @@ export async function fetchPackageByTracking(tracking: string): Promise<PackageD
   const { data } = await api.get<{ data: PackageDetail }>(`/client/packages/${encodeURIComponent(tracking)}`);
   return data.data;
 }
+
+/**
+ * Profile shape returned by GET/PATCH /client/profile — the Customer document
+ * (populated branch). The backend `client.service.updateProfile` updates
+ * email/phone/address; everything else is read-only for the client.
+ */
+export interface ClientProfileDetail {
+  _id: string;
+  code: string;
+  name: string;
+  lastName: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  miamiAddress?: string;
+  branchId?: { _id: string; name: string; address?: string; phone?: string } | null;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
+}
+
+/** PATCH /client/profile body — only the updatable fields. */
+export interface ProfilePatch {
+  email?: string;
+  phone?: string;
+  address?: string;
+}
+
+/** GET /client/profile — read the authenticated client's own profile. */
+export async function fetchProfile(): Promise<ClientProfileDetail> {
+  const { data } = await api.get<{ data: ClientProfileDetail }>('/client/profile');
+  return data.data;
+}
+
+/** PATCH /client/profile — update email/phone/address; returns the updated profile. */
+export async function updateProfile(patch: ProfilePatch): Promise<ClientProfileDetail> {
+  const { data } = await api.patch<{ data: ClientProfileDetail }>('/client/profile', patch);
+  return data.data;
+}

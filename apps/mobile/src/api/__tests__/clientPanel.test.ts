@@ -1,18 +1,21 @@
-import { fetchDashboard, fetchPackages, fetchPackageByTracking } from '@/api/clientPanel';
+import { fetchDashboard, fetchPackages, fetchPackageByTracking, fetchProfile, updateProfile } from '@/api/clientPanel';
 import { api } from '@/lib/api';
 
 // Mock the shared axios client so these stay pure contract tests (no network).
 jest.mock('@/lib/api', () => ({
   api: {
     get: jest.fn(),
+    patch: jest.fn(),
   },
 }));
 
 const apiGet = api.get as jest.Mock;
+const apiPatch = api.patch as jest.Mock;
 
 describe('clientPanel API wrappers', () => {
   beforeEach(() => {
     apiGet.mockReset();
+    apiPatch.mockReset();
   });
 
   it('fetchDashboard returns the stats payload', async () => {
@@ -65,5 +68,47 @@ describe('clientPanel API wrappers', () => {
     expect(apiGet).toHaveBeenCalledWith('/client/packages/RB-000002');
     expect(result.tracking).toBe('RB-000002');
     expect(result.amountToPay).toBe(45.5);
+  });
+
+  it('fetchProfile returns the customer profile document', async () => {
+    const profile = {
+      _id: 'c1',
+      code: 'RB-000001',
+      name: 'Ana',
+      lastName: 'Gomez',
+      email: 'ana@example.com',
+      phone: '809-555-0100',
+      address: 'Av. 27',
+      branchId: { _id: 'b1', name: 'Santo Domingo' },
+    };
+    apiGet.mockResolvedValue({ data: { success: true, data: profile } });
+
+    const result = await fetchProfile();
+
+    expect(apiGet).toHaveBeenCalledWith('/client/profile');
+    expect(result.code).toBe('RB-000001');
+    expect(result.branchId?.name).toBe('Santo Domingo');
+  });
+
+  it('updateProfile PATCHes the updatable fields and returns the updated profile', async () => {
+    const updated = {
+      _id: 'c1',
+      code: 'RB-000001',
+      name: 'Ana',
+      lastName: 'Gomez',
+      email: 'ana.nueva@example.com',
+      phone: '809-555-0199',
+      address: 'Av. Independencia',
+    };
+    apiPatch.mockResolvedValue({ data: { success: true, data: updated } });
+
+    const result = await updateProfile({ email: 'ana.nueva@example.com', phone: '809-555-0199', address: 'Av. Independencia' });
+
+    expect(apiPatch).toHaveBeenCalledWith('/client/profile', {
+      email: 'ana.nueva@example.com',
+      phone: '809-555-0199',
+      address: 'Av. Independencia',
+    });
+    expect(result).toEqual(updated);
   });
 });

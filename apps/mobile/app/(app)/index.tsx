@@ -83,6 +83,14 @@ export default function DashboardScreen() {
               </View>
             ))}
           </View>
+          <View style={styles.linksRow}>
+            <Pressable style={styles.link} onPress={() => router.push('/notifications')}>
+              <Text style={styles.linkText}>{t('notifications.title')}</Text>
+            </Pressable>
+            <Pressable style={styles.link} onPress={() => router.push('/profile')}>
+              <Text style={styles.linkText}>{t('profile.title')}</Text>
+            </Pressable>
+          </View>
           <View style={styles.sectionRow}>
             <Text style={styles.sectionTitle}>{t('dashboard.recent')}</Text>
             <Pressable onPress={() => router.push('/packages')}>
@@ -124,6 +132,17 @@ const styles = StyleSheet.create({
   },
   cardValue: { fontSize: 28, fontWeight: '800', color: '#2563eb' },
   cardLabel: { fontSize: 13, color: '#475569', marginTop: 4 },
+  linksRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  link: {
+    flex: 1,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  linkText: { color: '#1d4ed8', fontWeight: '600' },
   sectionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
