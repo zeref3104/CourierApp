@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { fetchPackageByTracking, PackageDetail } from '@/api/clientPanel';
+import { sortTimelineChronological, shouldShowAmountCard, pickupBranchOf } from '@/lib/tracking';
 import { t } from '@/i18n';
 
 /**
@@ -9,6 +10,8 @@ import { t } from '@/i18n';
  * renders the chronological PackageHistory timeline + pickup branch, and the
  * amount-to-pay card ONLY when the package is `disponible` (spec gate — for any
  * other status the backend strips amount fields and we must not render them).
+ * The sort/gate/branch logic lives in pure helpers (src/lib/tracking.ts) so the
+ * verify-5b rendering behaviours are unit-tested (task 5.10).
  */
 export default function TrackingDetailScreen() {
   const { tracking } = useLocalSearchParams<{ tracking: string }>();
@@ -34,15 +37,10 @@ export default function TrackingDetailScreen() {
 
   // Backend returns history sorted newest-first; the spec timeline must be
   // chronological (oldest -> newest).
-  const timeline = useMemo(() => {
-    if (!pkg) return [];
-    return [...pkg.history].sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
-  }, [pkg]);
+  const timeline = useMemo(() => (pkg ? sortTimelineChronological(pkg.history) : []), [pkg]);
 
-  const showAmountCard = pkg?.status === 'disponible' && typeof pkg.amountToPay === 'number';
-  const pickupBranch = pkg?.pickupBranch ?? pkg?.branchId ?? null;
+  const showAmountCard = pkg ? shouldShowAmountCard(pkg) : false;
+  const pickupBranch = pkg ? pickupBranchOf(pkg) : null;
 
   if (loading) {
     return (
