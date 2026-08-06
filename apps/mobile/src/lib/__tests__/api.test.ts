@@ -134,4 +134,49 @@ describe('response interceptor', () => {
     expect(d.postRefresh).not.toHaveBeenCalled();
     expect(d.request).not.toHaveBeenCalled();
   });
+
+  it('single-flights concurrent 401s: exactly one refresh, all retried, no logout', async () => {
+    const d = buildDeps();
+    const interceptor = makeResponseInterceptor(d);
+    // The dashboard fires four parallel /client/* calls; a shared access-token
+    // expiry makes ALL of them 401 at once. Each must wait on the SAME refresh
+    // promise — four refreshes would collide with the server-side rotation and
+    // revoke every token (spurious logout).
+    const urls = ['/client/dashboard', '/client/packages', '/client/packages/RB-000001', '/client/notifications'];
+    const configs = urls.map((url) => {
+      const cfg = reqConfig();
+      cfg.url = url;
+      return cfg;
+    });
+
+    const results = await Promise.all(configs.map((cfg) => interceptor(error401(cfg))));
+
+    expect(d.postRefresh).toHaveBeenCalledTimes(1);
+    expect(d.postRefresh).toHaveBeenCalledWith('refresh-1');
+    expect(d.saveTokens).toHaveBeenCalled();
+    expect(d.clearAuth).not.toHaveBeenCalled();
+    expect(d.request).toHaveBeenCalledTimes(urls.length);
+    const retriedUrls = d.request.mock.calls.map((c) => (c[0] as InternalAxiosRequestConfig).url);
+    expect(retriedUrls.sort()).toEqual([...urls].sort());
+    for (const cfg of d.request.mock.calls.map((c) => c[0] as InternalAxiosRequestConfig)) {
+      expect(cfg.headers.Authorization).toBe('Bearer access-2');
+    }
+    expect(results).toHaveLength(urls.length);
+  });
+
+  it('starts a fresh refresh after the lock clears (new wave, not deduped)', async () => {
+    const d = buildDeps();
+    const interceptor = makeResponseInterceptor(d);
+
+    // Wave 1: one 401 triggers and completes a refresh.
+    const first = reqConfig();
+    await interceptor(error401(first));
+    expect(d.postRefresh).toHaveBeenCalledTimes(1);
+
+    // Wave 2: a later 401 (after the lock released) refreshes again.
+    const second = reqConfig();
+    await interceptor(error401(second));
+    expect(d.postRefresh).toHaveBeenCalledTimes(2);
+    expect(d.clearAuth).not.toHaveBeenCalled();
+  });
 });

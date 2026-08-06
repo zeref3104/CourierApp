@@ -53,14 +53,23 @@ export function makeRequestInterceptor(deps: ApiDeps) {
 
 /**
  * Build the response interceptor. On a 401 it:
- *   1. calls the body-refresh endpoint with the stored refresh token,
+ *   1. fires the body-refresh endpoint with the stored refresh token,
  *   2. persists the rotated pair via saveTokens,
  *   3. retries the ORIGINAL request with the new access token, and
  *   4. on refresh failure calls clearAuth (logs the user out) and rejects.
  * Requests that are NOT 401 pass through untouched; a config is only retried
  * once (the RETRIED marker prevents an infinite loop).
+ *
+ * Concurrent 401s are DEDUPLICATED via a single-flight lock: while a refresh is
+ * in flight, every other 401 awaits the SAME refresh promise instead of firing
+ * its own POST /auth/client/refresh. Without this the dashboard's four parallel
+ * /client/* calls would each rotate the token; the API revokes ALL client
+ * tokens on a replay/rotation collision, which would spurious-logout the user.
  */
 export function makeResponseInterceptor(deps: ApiDeps) {
+  /** Single-flight lock: the in-flight refresh promise, or null when idle. */
+  let refreshInFlight: Promise<{ accessToken: string; refreshToken: string }> | null = null;
+
   return async (error: AxiosError) => {
     const original = error.config as (AxiosRequestConfig & { [RETRIED]?: boolean }) | undefined;
 
@@ -76,7 +85,20 @@ export function makeResponseInterceptor(deps: ApiDeps) {
     }
 
     try {
-      const next = await deps.postRefresh(refreshToken);
+      if (!refreshInFlight) {
+        // Single-flight: only the FIRST concurrent 401 actually calls refresh.
+        refreshInFlight = deps.postRefresh(refreshToken);
+        // Reset the lock when the shared refresh settles (success or failure)
+        // so a later, legitimately new 401 starts a fresh refresh. Use
+        // then(onSettled, onSettled) instead of finally(): the promise derived
+        // by finally() would reject on refresh failure and crash the process
+        // with an unhandled rejection.
+        const onSettled = () => {
+          refreshInFlight = null;
+        };
+        refreshInFlight.then(onSettled, onSettled);
+      }
+      const next = await refreshInFlight;
       await deps.saveTokens(next.accessToken, next.refreshToken);
       // Retry the original request with the fresh access token.
       original.headers = { ...original.headers, Authorization: `Bearer ${next.accessToken}` };
