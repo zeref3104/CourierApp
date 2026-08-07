@@ -47,7 +47,12 @@ const config = {
   trustProxy: process.env.TRUST_PROXY ? parseInt(process.env.TRUST_PROXY, 10) : 0,
 
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    // Comma-separated list of allowed origins (dev + prod). The `cors` and
+    // socket.io middlewares echo the matching request origin when given an
+    // array; a bare string would allow exactly one origin.
+    origin: process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+      : 'http://localhost:5173',
     credentials: true,
   },
 
