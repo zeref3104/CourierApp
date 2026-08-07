@@ -8,6 +8,9 @@ import { isSupportedLanguage, LANGUAGE_LOCALES, type SupportedLanguage } from '.
 const storedLanguage = localStorage.getItem('language');
 const initialLanguage = isSupportedLanguage(storedLanguage) ? storedLanguage : 'es';
 
+// --- Boot diagnostics (temporary) ---
+console.log('[i18n] initial language:', initialLanguage, '| stored:', storedLanguage);
+
 i18n.use(initReactI18next).init({
   resources: {
     es: { translation: es },

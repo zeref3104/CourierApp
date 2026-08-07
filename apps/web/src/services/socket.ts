@@ -43,6 +43,9 @@ export function connectSocket(token: string): Socket {
 
   const url = resolveSocketUrl();
 
+  // --- Boot diagnostics (temporary) ---
+  console.log('[socket] connecting to:', url || '(same-origin)', '| path: /socket.io');
+
   socket = io(url, {
     path: '/socket.io',
     auth: { token },

@@ -8,8 +8,12 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// --- Boot diagnostics (temporary) ---
+console.log('[api] axios baseURL:', api.defaults.baseURL, '| env VITE_API_URL:', import.meta.env.VITE_API_URL || '(not set -> fallback)');
+
 // Request interceptor
 api.interceptors.request.use((config) => {
+  console.debug('[api] request:', config.method?.toUpperCase(), config.baseURL, config.url);
   const token = store.getState().auth.accessToken;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

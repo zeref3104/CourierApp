@@ -8,9 +8,34 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <title>Courier Manager</title>
+    <script>
+      // --- Boot diagnostics (temporary) ---
+      // Catches failures that happen BEFORE the bundle runs — e.g. the
+      // /assets/*.js module failing to load, or being served as text/html by a
+      // misconfigured Caddy try_files. A console.log inside the bundle would
+      // never execute in those cases, so this trap lives in index.html.
+      window.__BOOT_ERRORS__ = [];
+      function showBootError(label, detail) {
+        var msg = label + ': ' + (detail && detail.message ? detail.message : String(detail));
+        window.__BOOT_ERRORS__.push(msg);
+        console.error('[boot]', msg);
+        var el = document.getElementById('boot-error');
+        if (el) {
+          el.style.display = 'block';
+          el.textContent += msg + '\n';
+        }
+      }
+      window.addEventListener('error', function (e) {
+        showBootError('window error', e.message + ' @ ' + (e.filename || 'inline') + ':' + e.lineno + ':' + e.colno);
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        showBootError('unhandled rejection', e.reason);
+      });
+    </script>
   </head>
   <body class="antialiased">
     <div id="root"></div>
+    <div id="boot-error" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#fef2f2;color:#b91c1c;font:12px/1.4 monospace;padding:8px 12px;border-top:2px solid #dc2626;white-space:pre-wrap;max-height:40vh;overflow:auto"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
