@@ -6,10 +6,14 @@ const TenantNotFoundException = require('../exceptions/TenantNotFoundException')
 const PUBLIC_ROUTES = [
   '/auth/login',
   '/auth/client/login',
+  '/auth/client/otp',
+  '/auth/client/register',
+  '/auth/client/refresh',
   '/auth/refresh',
   '/auth/password',
   '/auth/superadmin/login',
   '/superadmin/login',
+  '/public',
 ];
 
 async function tenantResolver(req, res, next) {
@@ -78,6 +82,7 @@ async function tenantResolver(req, res, next) {
       plan: company.planId,
       license,
       settings: company.settings,
+      clientCodePrefix: company.clientCodePrefix,
     };
 
     // Get tenant DB connection

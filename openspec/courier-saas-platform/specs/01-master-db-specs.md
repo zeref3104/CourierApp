@@ -19,24 +19,29 @@
   - phone (string, optional)
   - address (string, optional)
   - planId (ObjectId, required): Reference to a Plan
+  - clientCodePrefix (string, optional, `[A-Z]{2,5}`): Platform-unique prefix for the global client code; server-suggested from company name initials, administrator MAY override
 - **Process:**
   1. Validate input with Zod schema
   2. Check slug uniqueness in `companies` collection
-  3. Generate unique `databaseName` as `courier_{slug}`
-  4. Create the tenant MongoDB database
-  5. Create default collections and indexes in tenant DB
-  6. Seed default roles (Administrador, Caja, Recepción, Almacén, Repartidor)
-  7. Seed default settings (prices, company info)
-  8. Create first admin user (provided in request)
-  9. Create License record with startDate = now, status = "trial"
-  10. Return created company
+  3. Check `clientCodePrefix` uniqueness in `companies` collection (409 if taken; company uncreated)
+  4. Generate unique `databaseName` as `courier_{slug}`
+  5. Create the tenant MongoDB database
+  6. Create default collections and indexes in tenant DB
+  7. Seed default roles (Administrador, Caja, Recepción, Almacén, Repartidor) plus the canonical `client` role (isSystem, permissions `[]`)
+  8. Seed default settings (prices, company info)
+  9. Create first admin user (provided in request)
+  10. Create License record with startDate = now, status = "trial"
+  11. Create the master-DB `CompanyCounter` record (per-company client sequence, zero-padded 6)
+  12. Return created company
 - **Validation Rules:**
   - slug: only lowercase letters, numbers, hyphens. 3-30 chars
   - email: valid email format
   - name: 2-100 chars
+  - clientCodePrefix: 2-5 uppercase letters, platform-unique, immutable after creation
 - **Response:** Created company object
 - **Error Cases:**
   - 409: Slug already exists
+  - 409: clientCodePrefix already exists
   - 404: Plan not found
   - 400: Validation errors
 

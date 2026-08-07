@@ -11,7 +11,10 @@ export interface ReceiptNumberParams {
 
 export declare function generateTrackingNumber(params: TrackingNumberParams): string;
 export declare function generateReceiptNumber(params: ReceiptNumberParams): string;
+/** @deprecated Use generateClientCode(prefix, seq) for new customers. */
 export declare function generateCustomerCode(seq: number): string;
+export declare function suggestClientPrefix(companyName: string): string;
+export declare function generateClientCode(prefix: string, seq: number): string;
 export declare function calculatePricing(
   weight: number,
   pricePerLb: number,

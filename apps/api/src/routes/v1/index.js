@@ -11,6 +11,9 @@ router.use('/auth', require('../../modules/auth/auth.routes'));
 // SuperAdmin routes
 router.use('/superadmin', require('../../modules/companies/company.routes'));
 
+// Public, pre-auth routes (whitelisted in tenantResolver)
+router.use('/public', require('../../modules/public/public.routes'));
+
 // Protected routes (tenant resolved + auth required)
 router.use('/customers', require('../../modules/customers/customer.routes'));
 router.use('/packages', require('../../modules/packages/package.routes'));

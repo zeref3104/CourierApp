@@ -3,8 +3,10 @@ const Plan = require('../../models/master/Plan');
 const License = require('../../models/master/License');
 const ConflictException = require('../../exceptions/ConflictException');
 const NotFoundException = require('../../exceptions/NotFoundException');
+const ValidationException = require('../../exceptions/ValidationException');
 const connectionManager = require('../../services/tenant/connectionManager');
 const logger = require('../../logs/logger');
+const { suggestClientPrefix } = require('@courier/helpers');
 
 class CompanyService {
   getCompanyModel(masterConnection) {
@@ -27,17 +29,47 @@ class CompanyService {
     const existing = await Company.findOne({ slug: data.slug });
     if (existing) throw new ConflictException('Company slug already exists');
 
+    // Client code prefix (client-code-identity spec, D2): the admin may provide
+    // one; otherwise the system suggests initials from the company name. It is
+    // platform-unique and set once — the sparse unique index backs this up.
+    const clientCodePrefix = data.clientCodePrefix || suggestClientPrefix(data.name);
+    if (clientCodePrefix) {
+      const prefixOwner = await Company.findOne({ clientCodePrefix });
+      if (prefixOwner) throw new ConflictException('Client code prefix already in use');
+    } else {
+      // The name has no letters to build a suggestion from (e.g. "1234") and no
+      // override was given — fail with a clear error so the admin can provide
+      // the prefix explicitly (the form shows an editable field).
+      throw new ValidationException([
+        {
+          field: 'clientCodePrefix',
+          message: 'Unable to suggest a client code prefix from the company name; provide one explicitly',
+        },
+      ]);
+    }
+
     const databaseName = `courier_${data.slug}`;
 
-    const company = await Company.create({
-      ...data,
-      databaseName,
-      settings: {
-        defaultCurrency: 'DOP',
-        locale: 'es-DO',
-        timezone: 'America/Santo_Domingo',
-      },
-    });
+    let company;
+    try {
+      company = await Company.create({
+        ...data,
+        clientCodePrefix,
+        databaseName,
+        settings: {
+          defaultCurrency: 'DOP',
+          locale: 'es-DO',
+          timezone: 'America/Santo_Domingo',
+        },
+      });
+    } catch (err) {
+      if (err && err.code === 11000 && err.keyValue && err.keyValue.clientCodePrefix) {
+        // Lost the prefix-uniqueness race against a concurrent create — the
+        // sparse unique index is the real guarantee (verify SUGGESTION 2).
+        throw new ConflictException('Client code prefix already in use');
+      }
+      throw err;
+    }
 
     // Create trial license
     await License.create({
@@ -74,6 +106,7 @@ class CompanyService {
       { code: 'reception', name: 'Recepción', description: 'Front desk reception', permissions: [] },
       { code: 'warehouse', name: 'Almacén', description: 'Warehouse staff', permissions: [] },
       { code: 'delivery', name: 'Entrega', description: 'Delivery dispatcher', permissions: [] },
+      { code: 'client', name: 'Cliente', description: 'Self-service client', permissions: [] },
     ];
 
     const Role = tenantConnection.model('Role');

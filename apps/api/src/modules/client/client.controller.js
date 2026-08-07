@@ -50,6 +50,12 @@ const clientController = {
     const profile = await service.getProfile(req.user.clientId);
     apiResponse.success(res, { code: profile.code });
   }),
+
+  registerDeviceToken: asyncHandler(async (req, res) => {
+    const service = new ClientService(req.tenantModels);
+    const result = await service.registerDeviceToken(req.user._id, req.body);
+    apiResponse.created(res, result, 'Device registered');
+  }),
 };
 
 module.exports = clientController;

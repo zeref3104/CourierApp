@@ -47,6 +47,10 @@ const emailTemplates = {
   es: {
     fallbackCustomerName: 'Cliente',
     statusLabels: statusLabels.es,
+    otp: {
+      subject: 'Tu código de verificación',
+      body: 'Hola,\n\nTu código de verificación es {{code}}. Expira en 10 minutos.\n\nSi no solicitaste este código, ignora este mensaje.',
+    },
     packageStatus: {
       subject: 'Actualización de tu envío #{{tracking}}',
       body: 'Hola {{customerName}},\n\nTu paquete #{{tracking}} está {{statusLabel}}.\n\nPuedes hacer seguimiento en tu panel de cliente.\n\nGracias por confiar en nosotros.',
@@ -59,6 +63,10 @@ const emailTemplates = {
   en: {
     fallbackCustomerName: 'Customer',
     statusLabels: statusLabels.en,
+    otp: {
+      subject: 'Your verification code',
+      body: 'Hello,\n\nYour verification code is {{code}}. It expires in 10 minutes.\n\nIf you did not request this code, ignore this message.',
+    },
     packageStatus: {
       subject: 'Update on your shipment #{{tracking}}',
       body: 'Hello {{customerName}},\n\nYour package #{{tracking}} is {{statusLabel}}.\n\nYou can track it from your customer dashboard.\n\nThank you for trusting us.',
@@ -71,6 +79,10 @@ const emailTemplates = {
   fr: {
     fallbackCustomerName: 'Client',
     statusLabels: statusLabels.fr,
+    otp: {
+      subject: 'Votre code de vérification',
+      body: 'Bonjour,\n\nVotre code de vérification est {{code}}. Il expire dans 10 minutes.\n\nSi vous n\'avez pas demandé ce code, ignorez ce message.',
+    },
     packageStatus: {
       subject: 'Mise à jour de votre envoi n°{{tracking}}',
       body: 'Bonjour {{customerName}},\n\nVotre colis n°{{tracking}} est {{statusLabel}}.\n\nVous pouvez suivre votre colis depuis votre tableau de bord client.\n\nMerci de nous faire confiance.',

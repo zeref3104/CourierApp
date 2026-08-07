@@ -8,6 +8,12 @@
  */
 
 const { z } = require('zod');
+const {
+  CLIENT_CODE_PREFIX_PATTERN,
+  CLIENT_CODE_PATTERN,
+  DEVICE_PLATFORMS,
+  PUSH_TOKEN_PATTERN,
+} = require('@courier/constants');
 
 const PACKAGE_STATUSES = [
   'recibido_miami', 'almacen_miami', 'en_transito', 'llego_rd',
@@ -177,6 +183,89 @@ const createRateSchema = z.object({
 
 const updateRateSchema = createRateSchema.partial();
 
+// --- Company (company.schema.js) ---
+// Payload for superadmin company provisioning. clientCodePrefix is optional:
+// when absent, the service suggests one from the company name (design D2).
+const createCompanySchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters').max(100),
+  slug: z.string().min(2, 'Slug must be at least 2 characters').max(50),
+  email: z.string().email('Invalid email format'),
+  adminEmail: z.string().email('Invalid admin email format'),
+  phone: z.string().optional(),
+  planId: z.string().optional(),
+  clientCodePrefix: z
+    .string()
+    .regex(new RegExp(CLIENT_CODE_PREFIX_PATTERN), 'Client code prefix must be 2-5 uppercase letters')
+    .optional(),
+});
+
+const updateCompanySchema = createCompanySchema
+  .partial()
+  .omit({ clientCodePrefix: true }) // prefix is set once and immutable (design D1/D7)
+  .extend({ isActive: z.boolean().optional(), isSuspended: z.boolean().optional() });
+
+// --- Client registration OTP (client-registration spec, design D5/D6) ---
+// 6-digit numeric code, emailed and stored hashed on the master DB.
+const otpCode = z
+  .string()
+  .regex(/^\d{6}$/, 'OTP code must be exactly 6 digits');
+
+// POST /auth/client/otp/send — request a fresh code (60s cooldown enforced in service)
+const otpSendSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  lang: z.enum(['es', 'en', 'fr']).optional(),
+});
+
+// POST /auth/client/otp/verify — submit the emailed code (single-use)
+const otpVerifySchema = z.object({
+  email: z.string().email('Invalid email format'),
+  code: otpCode,
+});
+
+// POST /auth/client/register — create the client account once the OTP is verified
+const registerClientSchema = z.object({
+  companyId: z.string().min(1, 'companyId is required'),
+  branchId: z.string().min(1, 'branchId is required'),
+  name: z.string().min(2, 'Name must be at least 2 characters').max(50),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters').max(50),
+  phone: z.string().min(7, 'Phone must be at least 7 characters').max(20),
+  document: z.string().max(30).optional(),
+  email: z.string().email('Invalid email format'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Must contain an uppercase letter')
+    .regex(/[a-z]/, 'Must contain a lowercase letter')
+    .regex(/[0-9]/, 'Must contain a number'),
+  otpCode,
+});
+
+// --- Client code login + body refresh (client-code-login spec, design D9/D10) ---
+// POST /auth/client/login — the global client code {PREFIX}-{SEQ} IS the login
+// identifier; an email is explicitly NOT accepted (auth-specs delta §2.1).
+const clientCodeLoginSchema = z.object({
+  code: z
+    .string()
+    .regex(new RegExp(CLIENT_CODE_PATTERN), 'Code must be a valid client code (e.g. CS-000001)'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+// POST /auth/client/refresh — refresh token travels in the request BODY for
+// React Native (no HTTP-only cookie jar, design D10).
+const clientRefreshSchema = z.object({
+  refreshToken: z.string().min(1, 'Refresh token is required'),
+});
+
+// POST /client/device-token — register a push device for the authenticated
+// client (push-notifications spec, design D11). token must be an Expo push
+// token (rejected 422 otherwise); platform is android|ios.
+const deviceTokenSchema = z.object({
+  token: z
+    .string()
+    .regex(new RegExp(PUSH_TOKEN_PATTERN), 'Token must be a valid Expo push token (ExponentPushToken[...])'),
+  platform: z.enum(DEVICE_PLATFORMS),
+});
+
 module.exports = {
   loginSchema,
   clientLoginSchema,
@@ -200,4 +289,12 @@ module.exports = {
   createPaymentSchema,
   createRateSchema,
   updateRateSchema,
+  createCompanySchema,
+  updateCompanySchema,
+  otpSendSchema,
+  otpVerifySchema,
+  registerClientSchema,
+  clientCodeLoginSchema,
+  clientRefreshSchema,
+  deviceTokenSchema,
 };

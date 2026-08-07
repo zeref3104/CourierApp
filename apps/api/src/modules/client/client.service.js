@@ -1,5 +1,8 @@
 const BaseRepository = require('../../repositories/base/base.repository');
 const NotFoundException = require('../../exceptions/NotFoundException');
+const HttpException = require('../../exceptions/HttpException');
+
+const MAX_DEVICE_TOKENS = 5;
 
 class ClientService {
   constructor(models) {
@@ -54,7 +57,25 @@ class ClientService {
       .populate('changedBy', 'name')
       .lean();
 
-    return { ...pkg.toObject(), history };
+    const result = { ...pkg.toObject(), history };
+
+    // Amount-to-pay disclosure (client-panel-specs delta): the stored total +
+    // pickup branch are exposed ONLY when the package is sitting at `disponible`.
+    // Any other status leaks none of that (no amount-to-pay field and the raw
+    // amount-bearing fields are stripped from the response).
+    if (pkg.status === 'disponible') {
+      const branch = pkg.branchId;
+      result.amountToPay = pkg.total;
+      result.pickupBranch = branch
+        ? { id: branch._id, name: branch.name, address: branch.address }
+        : null;
+    } else {
+      for (const field of ['total', 'cost', 'shippingCost', 'tax', 'declaredValue']) {
+        delete result[field];
+      }
+    }
+
+    return result;
   }
 
   async getProfile(customerId) {
@@ -92,9 +113,43 @@ class ClientService {
     const { page = 1, limit = 20 } = query;
     const repo = new BaseRepository(this.models.Notification);
     return repo.findAll(
-      { customerId, channel: 'in_app' },
+      { customerId, channel: { $in: ['in_app', 'push'] } },
       { page: Number(page), limit: Number(limit), sort: { createdAt: -1 } }
     );
+  }
+
+  /**
+   * Register a push device token on the client's User (push-notifications spec,
+   * design D11). Embedded `deviceTokens[{token,platform,createdAt,updatedAt}]`
+   * are deduplicated by token (idempotent re-registration refreshes platform +
+   * updatedAt) and capped at 5 distinct devices (HTTP 400 beyond that).
+   */
+  async registerDeviceToken(userId, { token, platform }) {
+    const user = await this.models.User.findById(userId);
+    if (!user) throw new NotFoundException('User');
+
+    user.deviceTokens = user.deviceTokens || [];
+
+    const existing = user.deviceTokens.find((dt) => dt.token === token);
+    if (existing) {
+      existing.platform = platform;
+      existing.updatedAt = new Date();
+      await user.save();
+      return { registered: true, devices: user.deviceTokens.length };
+    }
+
+    if (user.deviceTokens.length >= MAX_DEVICE_TOKENS) {
+      throw new HttpException(400, `Device token limit reached: max ${MAX_DEVICE_TOKENS}`, 'DEVICE_LIMIT_REACHED');
+    }
+
+    user.deviceTokens.push({
+      token,
+      platform,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await user.save();
+    return { registered: true, devices: user.deviceTokens.length };
   }
 }
 

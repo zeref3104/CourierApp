@@ -1,6 +1,7 @@
 const logger = require('../../logs/logger');
 const emailService = require('../../services/notifications/email.service');
-const { emailTemplates } = require('../../services/notifications/emailTemplates');
+const { emailTemplates, interpolate } = require('../../services/notifications/emailTemplates');
+const { sendPush } = require('../../services/notifications/push.service');
 const socketHandler = require('./socketHandler');
 
 // Settings cache for email-send reads. Mirrors PackageService._getSetting so
@@ -80,6 +81,105 @@ const statusLabels = {
   extraviado: 'Tu paquete se reportó como extraviado',
 };
 
+/**
+ * Per-language push notification templates (push-notifications spec + design
+ * D12/D13). Mirrors emailTemplates.js: `title`/`body` are plain strings with
+ * {{param}} placeholders interpolated by the shared `interpolate` helper; the
+ * `statusLabels` sub-map keeps the push copy in sync with the email and in-app
+ * labels. `es` is the fallback (tenant language is resolved by getTenantLanguage).
+ */
+const pushTemplates = {
+  es: {
+    statusLabels: {
+      recibido_miami: 'recibido en Miami',
+      almacen_miami: 'en almacén en Miami',
+      en_transito: 'en tránsito hacia RD',
+      llego_rd: 'ha llegado a RD',
+      almacen_rd: 'en almacén en RD',
+      disponible: 'listo para recoger',
+      en_reparto: 'en reparto',
+      entregado: 'entregado',
+      cancelado: 'cancelado',
+      extraviado: 'reportado como extraviado',
+    },
+    title: 'Tu paquete {{statusLabel}}',
+    body: 'Paquete #{{tracking}}: {{statusLabel}}',
+  },
+  en: {
+    statusLabels: {
+      recibido_miami: 'received in Miami',
+      almacen_miami: 'in our Miami warehouse',
+      en_transito: 'in transit to the Dominican Republic',
+      llego_rd: 'has arrived in the Dominican Republic',
+      almacen_rd: 'in our DR warehouse',
+      disponible: 'is ready for pickup',
+      en_reparto: 'is out for delivery',
+      entregado: 'has been delivered',
+      cancelado: 'has been canceled',
+      extraviado: 'has been reported as lost',
+    },
+    title: 'Your package {{statusLabel}}',
+    body: 'Package #{{tracking}}: {{statusLabel}}',
+  },
+  fr: {
+    statusLabels: {
+      recibido_miami: 'reçu à Miami',
+      almacen_miami: 'dans notre entrepôt à Miami',
+      en_transito: 'en transit vers la République dominicaine',
+      llego_rd: 'est arrivé en République dominicaine',
+      almacen_rd: 'dans notre entrepôt en RD',
+      disponible: 'est prêt à être récupéré',
+      en_reparto: 'est en cours de livraison',
+      entregado: 'a été livré',
+      cancelado: 'a été annulé',
+      extraviado: 'a été signalé comme perdu',
+    },
+    title: 'Colis {{statusLabel}}',
+    body: 'Colis n°{{tracking}} : {{statusLabel}}',
+  },
+};
+
+/**
+ * Push a status-change notification to every registered device token of the
+ * package's customer (push-notifications spec + design D12/D13). Best-effort:
+ * no tokens -> no pill and no error; any Expo/send failure is logged and never
+ * blocks the status-change flow. The payload stays well under the Expo 4 KB
+ * data limit (only the small package metadata, never the full package doc).
+ */
+async function dispatchPush(pkg, toStatus, tenantSlug) {
+  try {
+    const user = await pkg.model('User').findOne({ clientId: pkg.customerId, isClient: true });
+    if (!user || !Array.isArray(user.deviceTokens) || user.deviceTokens.length === 0) return;
+
+    const lang = await getTenantLanguage(pkg);
+    const template = pushTemplates[lang] || pushTemplates.es;
+    const statusLabel = template.statusLabels[toStatus] || toStatus;
+    const title = interpolate(template.title, { statusLabel });
+    const body = interpolate(template.body, { tracking: pkg.tracking, statusLabel });
+
+    const payload = {
+      title,
+      body,
+      data: {
+        type: 'package_status',
+        packageId: pkg._id,
+        trackingNumber: pkg.tracking,
+        status: toStatus,
+        companySlug: tenantSlug || '',
+      },
+    };
+
+    const tokensList = user.deviceTokens.map((dt) => dt.token);
+    const result = await sendPush(tokensList, payload);
+    if (result.failed > 0) {
+      logger.warn('Push dispatch partial failure: %d of %d failed', result.failed, result.sent + result.failed);
+    }
+  } catch (err) {
+    // Best-effort (D13): a push outage must never fail the status-change flow.
+    logger.error('Push dispatch error (best-effort): %s', err.message);
+  }
+}
+
 const notificationHandler = {
   async onPackageCreated(payload) {
     try {
@@ -105,7 +205,7 @@ const notificationHandler = {
 
   async onPackageStatusChanged(payload) {
     try {
-      const { package: pkg, toStatus, userId } = payload;
+      const { package: pkg, toStatus, userId, tenantSlug } = payload;
 
       const title = statusLabels[toStatus] || `Estado actualizado: ${toStatus}`;
 
@@ -138,6 +238,9 @@ const notificationHandler = {
         const customerName = name || (emailTemplates[lang] || emailTemplates.es).fallbackCustomerName;
         await emailService.sendPackageStatusNotification(email, pkg.tracking, toStatus, customerName, lang);
       }
+
+      // Notify customer (push) — best-effort, after in_app + email (design D13)
+      await dispatchPush(pkg, toStatus, tenantSlug);
     } catch (err) {
       logger.error('Notification handler error:', err);
     }

@@ -10,6 +10,7 @@ export interface Company {
   databaseName: string;
   isActive: boolean;
   planId?: { _id: string; name: string };
+  clientCodePrefix?: string;
   settings?: {
     defaultCurrency: string;
     locale: string;
@@ -34,6 +35,7 @@ export interface CreateCompanyData {
   adminEmail: string;
   phone?: string;
   planId: string;
+  clientCodePrefix?: string;
 }
 
 export const companyService = {

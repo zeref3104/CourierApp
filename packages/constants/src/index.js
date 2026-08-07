@@ -53,6 +53,26 @@ const NOTIFICATION_TYPES = ['package_status', 'payment', 'system', 'delivery'];
 
 const LICENSE_STATUSES = ['active', 'expired', 'cancelled', 'trial'];
 
+/**
+ * Global client identity code (client-code-identity spec):
+ * - Prefix: platform-unique, admin-configured, 2-5 uppercase letters (e.g. "CS").
+ * - Full code: `{PREFIX}-{SEQ}` with a zero-padded 6-digit sequence (e.g. "CS-000001").
+ * Values are regex source strings (no delimiters) so callers can build RegExp freely.
+ */
+const CLIENT_CODE_PREFIX_PATTERN = '^[A-Z]{2,5}$';
+const CLIENT_CODE_PATTERN = '^[A-Z]{2,5}-\\d{6}$';
+
+/**
+ * Push/device-token contract (push-notifications spec, design D11).
+ * - DEVICE_PLATFORMS: platforms the mobile app reports for a device token
+ *   (the Expo push token belongs to one physical device on one OS).
+ * - PUSH_TOKEN_PATTERN: Expo push service token format `ExponentPushToken[...]`
+ *   with a base64url-safe payload (`[A-Za-z0-9_-]`). Regex source string (no
+ *   delimiters) so callers build RegExp freely, matching the code patterns.
+ */
+const DEVICE_PLATFORMS = ['android', 'ios'];
+const PUSH_TOKEN_PATTERN = '^ExponentPushToken\\[[A-Za-z0-9_-]+\\]$';
+
 const TERMINAL_STATUSES = [PACKAGE_STATUSES.ENTREGADO, PACKAGE_STATUSES.CANCELADO, PACKAGE_STATUSES.EXTRAVIADO];
 const ACTIVE_STATUSES = [
   PACKAGE_STATUSES.RECIBIDO_MIAMI,
@@ -77,4 +97,8 @@ module.exports = {
   LICENSE_STATUSES,
   TERMINAL_STATUSES,
   ACTIVE_STATUSES,
+  CLIENT_CODE_PREFIX_PATTERN,
+  CLIENT_CODE_PATTERN,
+  DEVICE_PLATFORMS,
+  PUSH_TOKEN_PATTERN,
 };

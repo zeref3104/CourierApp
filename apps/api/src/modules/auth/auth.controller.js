@@ -125,31 +125,22 @@ const authController = {
     }, 'Login successful');
   }),
 
-  clientLogin: asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
+  /**
+   * POST /auth/client/login — code + password login (client-code-login spec,
+   * design D9). The tenant is resolved server-side from the code prefix; the
+   * response carries the client access + refresh tokens in the BODY (React
+   * Native has no cookie jar — design D10).
+   */
+  clientCodeLogin: asyncHandler(async (req, res) => {
+    const { code, password } = req.body;
     const masterConnection = req.app.locals.masterConnection;
 
-    // SuperAdmin bypass for client login
-    const SuperAdmin = masterConnection.model('SuperAdmin');
-    const superAdmin = await SuperAdmin.findOne({ email, isActive: true }).select('+password');
-    if (superAdmin) {
-      throw new UnauthorizedException('SuperAdmin cannot login as client');
-    }
-
-    // Normal client login — resolve tenant
-    const models = await resolveTenantModels(req, email);
-    const result = await authService.login(email, password, models, req.tenant?.slug);
-
-    if (!result.user.isClient) {
-      throw new UnauthorizedException('Invalid client credentials');
-    }
-
-    setRefreshCookie(res, result.refreshToken);
+    const result = await authService.loginByCode({ code, password, masterConnection });
 
     apiResponse.success(res, {
       accessToken: result.accessToken,
-      mustChangePassword: result.mustChangePassword,
-      user: result.user,
+      refreshToken: result.refreshToken,
+      client: result.client,
     }, 'Login successful');
   }),
 
@@ -179,6 +170,26 @@ const authController = {
     apiResponse.success(res, { accessToken: result.accessToken }, 'Token refreshed');
   }),
 
+  /**
+   * POST /auth/client/refresh — React Native in-body refresh (design D10). The
+   * refresh token arrives in the request BODY (no HTTP-only cookie) and both
+   * the new access + refresh tokens return in the body. Shares authService
+   * rotation + replay protection with the cookie path.
+   */
+  clientRefresh: asyncHandler(async (req, res) => {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      throw new UnauthorizedException('No refresh token');
+    }
+    const masterConnection = req.app.locals.masterConnection;
+    const result = await authService.refresh(refreshToken, masterConnection);
+
+    apiResponse.success(res, {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    }, 'Token refreshed');
+  }),
+
   logout: asyncHandler(async (req, res) => {
     const refreshToken = req.cookies.refreshToken;
     const masterConnection = req.app.locals.masterConnection;
@@ -200,6 +211,29 @@ const authController = {
     const models = await resolveTenantModels(req, req.user.email);
     const result = await authService.changePassword(req.user._id, currentPassword, newPassword, models);
     apiResponse.success(res, result, 'Password changed successfully');
+  }),
+
+  otpSend: asyncHandler(async (req, res) => {
+    const { email, lang } = req.body;
+    const masterConnection = req.app.locals.masterConnection;
+
+    const result = await authService.sendOtp({ email, lang, masterConnection });
+    apiResponse.success(res, result, 'OTP sent successfully');
+  }),
+
+  otpVerify: asyncHandler(async (req, res) => {
+    const { email, code } = req.body;
+    const masterConnection = req.app.locals.masterConnection;
+
+    const result = await authService.verifyOtp({ email, code, masterConnection });
+    apiResponse.success(res, result, 'OTP verified');
+  }),
+
+  /** POST /auth/client/register — self-service client registration + auto-login */
+  register: asyncHandler(async (req, res) => {
+    const masterConnection = req.app.locals.masterConnection;
+    const result = await authService.registerClient({ ...req.body, masterConnection });
+    apiResponse.created(res, result, 'Registration successful');
   }),
 };
 

@@ -88,6 +88,19 @@ class EmailService {
   }
 
   /**
+   * Send a registration OTP verification code.
+   * Template is per-language (es/en/fr, es default per design D6).
+   */
+  async sendOtpCode(email, code, lang = 'es') {
+    const templates = emailTemplates[lang] || emailTemplates.es;
+
+    const subject = templates.otp.subject;
+    const text = interpolate(templates.otp.body, { code });
+
+    return this.sendNotification({ to: email, subject, text });
+  }
+
+  /**
    * Send delivery completion notification.
    */
   async sendDeliveryNotification(email, tracking, receiverName, customerName, lang = 'es') {
