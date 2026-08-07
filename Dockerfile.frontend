@@ -22,13 +22,23 @@ COPY packages/constants/package.json ./packages/constants/
 COPY packages/helpers/package.json ./packages/helpers/
 COPY packages/validation/package.json ./packages/validation/
 
-# IMPORTANT: use `npm install`, NOT `npm ci`. npm ci has a workspaces bug
-# (#4828) that drops the platform-specific optional native binaries
-# (rollup/esbuild linux-x64) when the lockfile was generated on another
-# platform (here: Windows), breaking Vite with "Cannot find module
-# @rollup/rollup-linux-x64-musl" on Alpine. `npm install` reconciles them
-# against the current OS/arch/libc and materializes the correct binaries.
+# Full workspace install (dev deps included: vite, tsc, tailwind).
+# Use `npm install`, NOT `npm ci`: npm ci drops the platform-specific optional
+# native binaries via a workspaces bug (#4828) — the force-install in the next
+# RUN guarantees them regardless. (Lockfile is generated on Windows, so it only
+# lists the win32 native packages.)
 RUN npm install
+
+# npm still skips the platform-specific optional native binaries because the
+# lockfile was recorded on Windows. Force-install the ones for THIS build
+# platform (alpine/musl), pinned to the exact versions resolved for rollup and
+# esbuild — those native packages are version-locked to their core packages.
+RUN ROLLUP_VERSION=$(node -e "console.log(require(require.resolve('rollup/package.json', { paths: ['/app/apps/web'] })).version)") \
+ && ESBUILD_VERSION=$(node -e "console.log(require(require.resolve('esbuild/package.json', { paths: ['/app/apps/web'] })).version)") \
+ && npm install --no-save \
+      @rollup/rollup-linux-x64-gnu@$ROLLUP_VERSION \
+      @rollup/rollup-linux-x64-musl@$ROLLUP_VERSION \
+      @esbuild/linux-x64@$ESBUILD_VERSION
 
 # Source of the whole monorepo: vite bundles @courier/helpers+constants from
 # packages/*, the build runs ../../scripts/check-i18n.mjs, and the just-installed
