@@ -13,8 +13,7 @@ FROM node:20-alpine AS build
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Cache layer: npm ci only depends on the manifests. Build a full workspace
-# install (no --only=production) so staging of deps across the tree is complete.
+# Cache layer: install depends only on the manifests below.
 COPY package.json package-lock.json ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/mobile/package.json ./apps/mobile/
@@ -22,7 +21,14 @@ COPY apps/web/package.json ./apps/web/
 COPY packages/constants/package.json ./packages/constants/
 COPY packages/helpers/package.json ./packages/helpers/
 COPY packages/validation/package.json ./packages/validation/
-RUN npm ci
+
+# IMPORTANT: use `npm install`, NOT `npm ci`. npm ci has a workspaces bug
+# (#4828) that drops the platform-specific optional native binaries
+# (rollup/esbuild linux-x64) when the lockfile was generated on another
+# platform (here: Windows), breaking Vite with "Cannot find module
+# @rollup/rollup-linux-x64-musl" on Alpine. `npm install` reconciles them
+# against the current OS/arch/libc and materializes the correct binaries.
+RUN npm install
 
 # Source of the whole monorepo: vite bundles @courier/helpers+constants from
 # packages/*, the build runs ../../scripts/check-i18n.mjs, and the just-installed
