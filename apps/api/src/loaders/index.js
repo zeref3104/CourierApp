@@ -6,9 +6,24 @@ const { registerListeners } = require('../events');
 const tenantResolver = require('../middlewares/tenantResolver');
 const logger = require('../logs/logger');
 
-async function seedSuperAdmin(masterConnection) {
+/**
+ * Resolve the super-admin credentials strictly. Never falls back to a weak
+ * default (previously 'Admin123456'): an unset or too-short password must fail
+ * and stop the process rather than silently provisioning a guessable admin.
+ */
+function resolveSuperAdminCredentials() {
   const email = process.env.SUPER_ADMIN_EMAIL || 'admin@courier.com';
-  const password = process.env.SUPER_ADMIN_PASSWORD || 'Admin123456';
+  const password = process.env.SUPER_ADMIN_PASSWORD;
+  if (!password || password.length < 12) {
+    throw new Error(
+      'FATAL: SUPER_ADMIN_PASSWORD must be set to at least 12 characters before the server can seed the super admin.'
+    );
+  }
+  return { email, password };
+}
+
+async function seedSuperAdmin(masterConnection) {
+  const { email, password } = resolveSuperAdminCredentials();
 
   const SuperAdmin = masterConnection.model('SuperAdmin');
   const exists = await SuperAdmin.findOne({ email });

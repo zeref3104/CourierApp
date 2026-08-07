@@ -23,7 +23,12 @@ async function seed() {
   const SuperAdmin = conn.model('SuperAdmin', superAdminSchema);
 
   const email = process.env.SUPER_ADMIN_EMAIL || 'admin@courier.com';
-  const password = process.env.SUPER_ADMIN_PASSWORD || 'Admin123456';
+  const password = process.env.SUPER_ADMIN_PASSWORD;
+  if (!password || password.length < 12) {
+    throw new Error(
+      'FATAL: SUPER_ADMIN_PASSWORD must be set to at least 12 characters before running the seed.'
+    );
+  }
 
   const exists = await SuperAdmin.findOne({ email });
   if (exists) {

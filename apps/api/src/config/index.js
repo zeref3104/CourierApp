@@ -38,7 +38,13 @@ const config = {
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
     max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100,
+    redisUrl: process.env.REDIS_URL || '',
   },
+
+  // How many reverse-proxy hops precede the app (nginx, etc.). When set to a
+  // positive number, the rate limiter honors X-Forwarded-For. Leave unset/0
+  // for direct exposure so the header cannot be spoofed to bypass limits.
+  trustProxy: process.env.TRUST_PROXY ? parseInt(process.env.TRUST_PROXY, 10) : 0,
 
   cors: {
     origin: process.env.CORS_ORIGIN || 'http://localhost:5173',

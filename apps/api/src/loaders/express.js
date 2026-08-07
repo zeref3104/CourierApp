@@ -29,8 +29,11 @@ function init({ app }) {
   // Rate limiting
   app.use('/api/', globalLimiter);
 
-  // Trust proxy for rate limiting behind nginx
-  app.set('trust proxy', 1);
+  // Trust the reverse proxy hops declared by the operator (for accurate client
+  // IPs in rate limiting and logs). Defaults to 0: with no proxy in front we
+  // must NOT trust the spoofable X-Forwarded-For header. Set TRUST_PROXY=n to
+  // match your nginx/Caddy hop count.
+  app.set('trust proxy', config.trustProxy);
 
   return app;
 }

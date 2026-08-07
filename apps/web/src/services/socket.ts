@@ -3,9 +3,31 @@ import { io, Socket } from 'socket.io-client';
 let socket: Socket | null = null;
 
 /**
+ * Resolve the Socket.io server origin.
+ *
+ * VITE_API_URL is the REST base (e.g. "/api/v1" same-origin, or an absolute
+ * API origin like "https://api.example.com"). Socket.io never mounts under the
+ * REST `/api/v1` prefix — it lives at `/socket.io`. So:
+ *   - relative VITE_API_URL ("/api/v1") -> same-origin socket at "/socket.io"
+ *   - absolute URL ("https://api.example.com/api/v1") -> origin + "/socket.io"
+ * Falls back to same-origin (empty string) when no API URL is configured.
+ */
+function resolveSocketUrl(): string {
+  const apiUrl = import.meta.env.VITE_API_URL || '';
+  try {
+    const url = new URL(apiUrl, window.location.origin);
+    return url.origin;
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Connect to the Socket.io server.
  * If already connected, returns the existing socket.
- * Use the same URL as the API (Vite proxy handles routing in dev).
+ * Uses the API origin with the dedicated "/socket.io" path (not /api/v1),
+ * which the Vite dev proxy and the production same-origin rewrite route
+ * correctly.
  */
 export function connectSocket(token: string): Socket {
   if (socket?.connected) {
@@ -19,9 +41,10 @@ export function connectSocket(token: string): Socket {
     socket.disconnect();
   }
 
-  const url = import.meta.env.VITE_API_URL || '';
+  const url = resolveSocketUrl();
 
   socket = io(url, {
+    path: '/socket.io',
     auth: { token },
     transports: ['websocket', 'polling'],
     reconnection: true,
