@@ -36,6 +36,79 @@ async function seedSuperAdmin(masterConnection) {
   logger.info(`SuperAdmin created: ${email} / ${password}`);
 }
 
+/**
+ * Seed default subscription plans when the master DB has none. Company
+ * creation requires a plan (License.planId is mandatory), so a fresh DB with
+ * zero plans deadlocks the superadmin onboarding flow — the form says "create
+ * a plan first" but no UI exists to create one. This seeds a sensible default
+ * tier set idempotently on first boot.
+ */
+const DEFAULT_PLANS = [
+  {
+    name: 'Básico',
+    code: 'basico',
+    description: 'Plan inicial para emprendimientos',
+    price: 0,
+    features: {
+      maxUsers: 5,
+      maxBranches: 1,
+      maxPackagesPerMonth: 500,
+      storageGB: 5,
+      apiAccess: false,
+      reports: true,
+      multipleBranches: false,
+      clientPanel: true,
+      whatsappNotifications: false,
+    },
+  },
+  {
+    name: 'Profesional',
+    code: 'profesional',
+    description: 'Plan para negocios en crecimiento',
+    price: 49,
+    features: {
+      maxUsers: 20,
+      maxBranches: 5,
+      maxPackagesPerMonth: 5000,
+      storageGB: 50,
+      apiAccess: true,
+      reports: true,
+      multipleBranches: true,
+      clientPanel: true,
+      whatsappNotifications: true,
+    },
+  },
+  {
+    name: 'Empresarial',
+    code: 'empresarial',
+    description: 'Plan completo para grandes operaciones',
+    price: 149,
+    features: {
+      maxUsers: 100,
+      maxBranches: 20,
+      maxPackagesPerMonth: 50000,
+      storageGB: 200,
+      apiAccess: true,
+      reports: true,
+      multipleBranches: true,
+      clientPanel: true,
+      whatsappNotifications: true,
+    },
+  },
+];
+
+async function seedPlans(masterConnection) {
+  const Plan = masterConnection.model('Plan');
+  const count = await Plan.countDocuments();
+  if (count > 0) {
+    logger.info(`Plans already seeded (${count}); skipping default plans`);
+    return;
+  }
+
+  await Plan.insertMany(DEFAULT_PLANS);
+  logger.info(`Seeded ${DEFAULT_PLANS.length} default plans`);
+}
+
 module.exports.init = async ({ app, io }) => {
   // 1. Winston logger
   winstonLoader.init();
@@ -46,6 +119,9 @@ module.exports.init = async ({ app, io }) => {
 
   // 2b. Seed default SuperAdmin if none exists
   await seedSuperAdmin(masterConnection);
+
+  // 2c. Seed default plans if none exist (company creation requires a plan)
+  await seedPlans(masterConnection);
 
   // 3. Express middlewares
   expressLoader.init({ app });
