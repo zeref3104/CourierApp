@@ -31,14 +31,14 @@ RUN npm install
 
 # npm still skips the platform-specific optional native binaries because the
 # lockfile was recorded on Windows. Force-install the ones for THIS build
-# platform (alpine/musl), pinned to the exact versions resolved for rollup and
-# esbuild — those native packages are version-locked to their core packages.
+# platform (alpine/musl) — the -gnu variant would be rejected with EBADPLATFORM.
+# Versions are read from the installed packages (they are version-locked to
+# rollup and esbuild cores).
 RUN ROLLUP_VERSION=$(node -e "console.log(require(require.resolve('rollup/package.json', { paths: ['/app/apps/web'] })).version)") \
  && ESBUILD_VERSION=$(node -e "console.log(require(require.resolve('esbuild/package.json', { paths: ['/app/apps/web'] })).version)") \
  && npm install --no-save \
-      @rollup/rollup-linux-x64-gnu@$ROLLUP_VERSION \
       @rollup/rollup-linux-x64-musl@$ROLLUP_VERSION \
-      @esbuild/linux-x64@$ESBUILD_VERSION
+      @esbuild/linux-x64-musl@$ESBUILD_VERSION
 
 # Source of the whole monorepo: vite bundles @courier/helpers+constants from
 # packages/*, the build runs ../../scripts/check-i18n.mjs, and the just-installed
