@@ -1,0 +1,53 @@
+# ============================================================================
+# Courier frontend — Vite SPA build + static serve (Caddy)
+# npm-workspaces monorepo: `npm ci` hoists SOME deps to the root node_modules
+# but keeps others in apps/*/node_modules (react-dom, @vitejs/plugin-react,
+# recharts, ...). For that reason deps install and build must happen in the
+# SAME stage — a cross-stage node_modules copy would lose the non-hoisted ones.
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Stage build — install full workspace (dev deps included: vite, tsc, tailwind)
+# ---------------------------------------------------------------------------
+FROM node:20-alpine AS build
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Cache layer: npm ci only depends on the manifests. Build a full workspace
+# install (no --only=production) so staging of deps across the tree is complete.
+COPY package.json package-lock.json ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/mobile/package.json ./apps/mobile/
+COPY apps/web/package.json ./apps/web/
+COPY packages/constants/package.json ./packages/constants/
+COPY packages/helpers/package.json ./packages/helpers/
+COPY packages/validation/package.json ./packages/validation/
+RUN npm ci
+
+# Source of the whole monorepo: vite bundles @courier/helpers+constants from
+# packages/*, the build runs ../../scripts/check-i18n.mjs, and the just-installed
+# node_modules (root + apps/*/node_modules) is PRESERVED because COPY only adds.
+COPY . .
+
+# Build the web SPA. Output defaults to <app>/apps/web/dist.
+RUN npm run build --workspace @courier/web
+
+# ---------------------------------------------------------------------------
+# Stage runner — serve the static bundle with Caddy (SPA fallback)
+# ---------------------------------------------------------------------------
+FROM caddy:2-alpine
+
+# Only the compiled assets go to the runtime image.
+COPY --from=build /app/apps/web/dist /srv
+
+# Static file server with SPA try_files fallback. Binds $PORT (Railway/Cloud
+# providers) and defaults to 80.
+COPY <<'EOF' /etc/caddy/Caddyfile
+{$PORT:80}
+
+root * /srv
+try_files {path} /index.html
+file_server
+EOF
+
+EXPOSE 80
