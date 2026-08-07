@@ -2,8 +2,22 @@ const mongoose = require('mongoose');
 const config = require('../config');
 const logger = require('../logs/logger');
 
+/**
+ * Compose the master URI by inserting the db name BEFORE any query string.
+ * A naive `${uri}/${db}` would corrupt a MONGO_URI carrying options, turning
+ * "?authSource=admin" into "?authSource=<db>/admin" (InvalidNamespace).
+ */
+function buildMasterUri() {
+  const { uri, masterDbName } = config.mongo;
+  const qPos = uri.indexOf('?');
+  const base = qPos === -1 ? uri : uri.slice(0, qPos);
+  const query = qPos === -1 ? '' : uri.slice(qPos);
+  const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  return `${cleanBase}/${masterDbName}${query}`;
+}
+
 async function initMaster() {
-  const uri = `${config.mongo.uri}/${config.mongo.masterDbName}`;
+  const uri = buildMasterUri();
 
   logger.info(`Connecting to Master DB: ${config.mongo.masterDbName}`);
 
