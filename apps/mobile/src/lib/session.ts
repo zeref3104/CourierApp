@@ -17,18 +17,29 @@ import { useTenantStore, TenantContext } from '@/stores/tenantStore';
  * the correct screen immediately.
  */
 export async function restoreSession(): Promise<AuthStatus> {
-  const tenant = await authStorage.loadTenant<TenantContext>();
-  if (tenant) {
+  // Defensive: this boot path must ALWAYS settle into a concrete status. A
+  // failed/half-native-module (e.g. expo-secure-store not linked) must never
+  // leave the app stuck on the boot spinner.
+  try {
+    const tenant = await authStorage.loadTenant<TenantContext>();
     useTenantStore.setState({ tenant, hydrated: true });
-  } else {
+  } catch {
+    // Corrupt or unavailable tenant storage -> never block the boot. The
+    // interceptor defaults to no tenant slug, which is fine pre-login.
     useTenantStore.setState({ hydrated: true });
   }
 
-  const refreshToken = await authStorage.loadRefreshToken();
-  if (refreshToken) {
-    // Token exists -> assume authenticated; interceptor handles expiry offline.
-    useAuthStore.setState({ refreshToken, status: 'authenticated' });
-    return 'authenticated';
+  try {
+    const refreshToken = await authStorage.loadRefreshToken();
+    if (refreshToken) {
+      // Token exists -> assume authenticated; interceptor handles expiry offline.
+      useAuthStore.setState({ refreshToken, status: 'authenticated' });
+      return 'authenticated';
+    }
+  } catch {
+    // Keychain failed -> treat as logged out rather than blocking the app.
+    useAuthStore.setState({ status: 'unauthenticated' });
+    return 'unauthenticated';
   }
 
   useAuthStore.setState({ status: 'unauthenticated' });
@@ -40,7 +51,11 @@ export function useSessionBootstrap(): AuthStatus {
   const status = useAuthStore((s) => s.status);
   useEffect(() => {
     if (status === 'unknown') {
-      restoreSession();
+      // Never let an unhandled rejection leave the boot status stuck on
+      // "unknown" (infinite spinner). Any failure degrades to logged-out.
+      restoreSession().catch(() => {
+        useAuthStore.setState({ status: 'unauthenticated' });
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
