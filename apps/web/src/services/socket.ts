@@ -13,7 +13,7 @@ let socket: Socket | null = null;
  * Falls back to same-origin (empty string) when no API URL is configured.
  */
 function resolveSocketUrl(): string {
-  const apiUrl = import.meta.env.VITE_API_URL || '';
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://api.charmeurexpress.us/api/v1';
   try {
     const url = new URL(apiUrl, window.location.origin);
     return url.origin;
