@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const config = require('../config');
 const logger = require('../logs/logger');
+const { buildDbUri } = require('../utils/mongoUri');
 
 /**
  * Compose the master URI by inserting the db name BEFORE any query string.
@@ -9,11 +10,7 @@ const logger = require('../logs/logger');
  */
 function buildMasterUri() {
   const { uri, masterDbName } = config.mongo;
-  const qPos = uri.indexOf('?');
-  const base = qPos === -1 ? uri : uri.slice(0, qPos);
-  const query = qPos === -1 ? '' : uri.slice(qPos);
-  const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
-  return `${cleanBase}/${masterDbName}${query}`;
+  return buildDbUri(uri, masterDbName);
 }
 
 async function initMaster() {

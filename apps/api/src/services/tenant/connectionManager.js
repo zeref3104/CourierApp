@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const logger = require('../../logs/logger');
+const { buildDbUri } = require('../../utils/mongoUri');
 
 // Interval handles are kept at module scope: the singleton is frozen
 // (Object.freeze below) to prevent accidental mutation, but class methods are
@@ -28,7 +29,7 @@ class ConnectionManager {
     logger.info(`Creating new connection for tenant: ${tenant.dbName}`);
 
     const connection = await mongoose.createConnection(
-      `${process.env.MONGO_URI}/${tenant.dbName}`,
+      buildDbUri(process.env.MONGO_URI, tenant.dbName),
       {
         maxPoolSize: 10,
         // minPoolSize 0: with 100 tenants a minPoolSize of 2 would keep ~200
@@ -158,7 +159,7 @@ class ConnectionManager {
     await this.closeConnection(dbName);
 
     // Create temp connection to drop the DB
-    const uri = `${process.env.MONGO_URI}/${dbName}`;
+    const uri = buildDbUri(process.env.MONGO_URI, dbName);
     const tempConn = await mongoose.createConnection(uri).asPromise();
     await tempConn.dropDatabase();
     await tempConn.close();
