@@ -52,7 +52,6 @@ function App() {
   useEffect(() => {
     const saved = localStorage.getItem('theme') || 'light';
     dispatch(setTheme(saved));
-    console.log('[app] mounted — path:', window.location.pathname, '| theme:', saved);
   }, [dispatch]);
 
   useEffect(() => {
