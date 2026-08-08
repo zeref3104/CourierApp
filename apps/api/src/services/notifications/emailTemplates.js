@@ -49,7 +49,7 @@ const emailTemplates = {
     statusLabels: statusLabels.es,
     otp: {
       subject: 'Tu código de verificación',
-      body: 'Hola,\n\nTu código de verificación es {{code}}. Expira en 10 minutos.\n\nSi no solicitaste este código, ignora este mensaje.',
+      body: 'Hola,\n\nTu código de verificación es {{code}}. Expira en 10 minutos.\n\nSi no solicitaste este código, ignora este mensaje.\n\nEste es un mensaje automático, no respondas a este correo.',
     },
     packageStatus: {
       subject: 'Actualización de tu envío #{{tracking}}',
@@ -65,7 +65,7 @@ const emailTemplates = {
     statusLabels: statusLabels.en,
     otp: {
       subject: 'Your verification code',
-      body: 'Hello,\n\nYour verification code is {{code}}. It expires in 10 minutes.\n\nIf you did not request this code, ignore this message.',
+      body: 'Hello,\n\nYour verification code is {{code}}. It expires in 10 minutes.\n\nIf you did not request this code, ignore this message.\n\nThis is an automated message, please do not reply to this email.',
     },
     packageStatus: {
       subject: 'Update on your shipment #{{tracking}}',
@@ -81,7 +81,7 @@ const emailTemplates = {
     statusLabels: statusLabels.fr,
     otp: {
       subject: 'Votre code de vérification',
-      body: 'Bonjour,\n\nVotre code de vérification est {{code}}. Il expire dans 10 minutes.\n\nSi vous n\'avez pas demandé ce code, ignorez ce message.',
+      body: 'Bonjour,\n\nVotre code de vérification est {{code}}. Il expire dans 10 minutes.\n\nSi vous n\'avez pas demandé ce code, ignorez ce message.\n\nCeci est un message automatique, veuillez ne pas répondre à cet e-mail.',
     },
     packageStatus: {
       subject: 'Mise à jour de votre envoi n°{{tracking}}',
