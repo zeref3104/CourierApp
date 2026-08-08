@@ -225,7 +225,10 @@ const otpVerifySchema = z.object({
 // POST /auth/client/register — create the client account once the OTP is verified
 const registerClientSchema = z.object({
   companyId: z.string().min(1, 'companyId is required'),
-  branchId: z.string().min(1, 'branchId is required'),
+  // branchId is optional: the mobile "Principal" option (empty branch list)
+  // omits it, and the backend resolves the main branch / self-heals a
+  // zero-branch tenant (client-registration spec, auth.service.registerClient).
+  branchId: z.string().min(1).optional(),
   name: z.string().min(2, 'Name must be at least 2 characters').max(50),
   lastName: z.string().min(2, 'Last name must be at least 2 characters').max(50),
   phone: z.string().min(7, 'Phone must be at least 7 characters').max(20),

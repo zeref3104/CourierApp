@@ -21,6 +21,11 @@ import { t } from '@/i18n';
  */
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
+// Placeholders render with Android's hint color by default, which can be
+// invisible against the input background on some devices/themes. Force an
+// explicit grey so the field label is always visible in release builds.
+const PLACEHOLDER_COLOR = '#94a3b8';
+
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<ClientProfileDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,6 +118,7 @@ export default function ProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder={t('profile.email')}
+          placeholderTextColor={PLACEHOLDER_COLOR}
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -123,6 +129,7 @@ export default function ProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder={t('profile.phone')}
+          placeholderTextColor={PLACEHOLDER_COLOR}
           value={phone}
           onChangeText={setPhone}
           keyboardType="phone-pad"
@@ -131,6 +138,7 @@ export default function ProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder={t('profile.address')}
+          placeholderTextColor={PLACEHOLDER_COLOR}
           value={address}
           onChangeText={setAddress}
           testID="profile-address"

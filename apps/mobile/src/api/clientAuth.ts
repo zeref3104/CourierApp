@@ -23,7 +23,11 @@ export async function loginClient(code: string, password: string): Promise<Login
 
 interface RegisterPayload {
   companyId: string;
-  branchId: string;
+  /**
+   * Optional: when omitted, the backend falls back to the company's main
+   * branch (or self-heals a zero-branch tenant with a "Principal" branch).
+   */
+  branchId?: string;
   name: string;
   lastName: string;
   phone: string;

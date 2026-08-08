@@ -3,7 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   clearAllAuth,
   clearPushToken,
+  loadLanguage,
   loadPushToken,
+  saveLanguage,
   savePushToken,
   SECURE_KEYS,
   ASYNC_KEYS,
@@ -68,5 +70,22 @@ describe('authStorage push token lifecycle', () => {
     expect(AsyncStorage.removeItem).toHaveBeenCalledWith(ASYNC_KEYS.tenant);
     expect(AsyncStorage.removeItem).toHaveBeenCalledWith(ASYNC_KEYS.pushToken);
     await expect(loadPushToken()).resolves.toBeNull();
+  });
+});
+
+describe('authStorage language lifecycle', () => {
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    mockMemory.clear();
+  });
+
+  it('saveLanguage/loadLanguage round-trips the chosen app language', async () => {
+    await saveLanguage('en');
+    await expect(loadLanguage()).resolves.toBe('en');
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(ASYNC_KEYS.language, 'en');
+  });
+
+  it('returns null when no language was ever chosen', async () => {
+    await expect(loadLanguage()).resolves.toBeNull();
   });
 });

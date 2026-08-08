@@ -44,13 +44,14 @@ function makeDoc(overrides = {}) {
  * and the statics `findOne` / `create` / `deleteOne` (fallback + lookups).
  * Constructor calls are recorded on `Model.mock.calls` for assertions.
  */
-function makeModel({ findOne, create, deleteOne, startSession, docOverrides = {} } = {}) {
+function makeModel({ findOne, create, deleteOne, countDocuments, startSession, docOverrides = {} } = {}) {
   const Model = jest.fn((data) =>
     makeDoc({ ...docOverrides, ...data, _id: docOverrides._id || (data && data._id) || 'model-1' })
   );
   Model.findOne = findOne || jest.fn();
   Model.create = create || jest.fn();
   Model.deleteOne = deleteOne || jest.fn().mockResolvedValue({ deletedCount: 1 });
+  Model.countDocuments = countDocuments || jest.fn().mockResolvedValue(0);
   Model.db = { startSession: startSession || jest.fn().mockResolvedValue(null) };
   return Model;
 }
@@ -87,6 +88,7 @@ function setup(overrides = {}) {
       : { status: 'trial', endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) };
   const branch =
     overrides.branch !== undefined ? overrides.branch : { _id: 'branch-1', name: 'Main', isActive: true };
+  const mainBranch = overrides.mainBranch !== undefined ? overrides.mainBranch : null;
   const otpDoc = overrides.otpDoc !== undefined ? overrides.otpDoc : otpDocWith();
   const clientRole =
     overrides.clientRole !== undefined
@@ -118,7 +120,24 @@ function setup(overrides = {}) {
     Company: makeModel({ findOne: jest.fn().mockResolvedValue(company) }),
     License: makeModel({ findOne: jest.fn().mockResolvedValue(license) }),
     OtpCode: makeModel({ findOne: jest.fn().mockResolvedValue(otpDoc) }),
-    Branch: makeModel({ findOne: jest.fn().mockResolvedValue(branch) }),
+    // Branch resolution: an explicit { _id } lookup resolves the selected
+    // branch (null when unknown/inactive); the isMainBranch lookup resolves
+    // the main-branch fallback; countDocuments drives the zero-branch
+    // self-heal path.
+    Branch: makeModel({
+      findOne: jest.fn((query) => {
+        if (query && query._id) return Promise.resolve(branch);
+        return Promise.resolve(mainBranch);
+      }),
+      countDocuments: jest
+        .fn()
+        .mockResolvedValue(overrides.branchCount !== undefined ? overrides.branchCount : 0),
+      create:
+        overrides.branchCreate ||
+        jest
+          .fn()
+          .mockResolvedValue({ _id: 'branch-principal', name: 'Principal', code: 'PRINCIPAL', isActive: true, isMainBranch: true }),
+    }),
     // Role.create returns the created doc (real Mongoose behavior) so the
     // self-heal path yields a usable roleId.
     Role: makeModel({
@@ -234,8 +253,33 @@ describe('authService.registerClient', () => {
     expect(ctx.models.Customer.create).not.toHaveBeenCalled();
   });
 
-  test('rejects with 404 when the branch is unknown or inactive', async () => {
-    const ctx = setup({ branch: null });
+  test('falls back to the main branch when the selected branch is unknown or inactive', async () => {
+    const ctx = setup({
+      branch: null,
+      mainBranch: { _id: 'branch-main', name: 'Principal', isActive: true },
+    });
+    await authService.registerClient(ctx.payload);
+    expect(ctx.models.Customer.mock.calls[0][0].branchId).toBe('branch-main');
+    expect(ctx.models.User.mock.calls[0][0].branchId).toBe('branch-main');
+  });
+
+  test('registers without a branchId by falling back to the main branch', async () => {
+    const ctx = setup({ mainBranch: { _id: 'branch-main', name: 'Principal', isActive: true } });
+    await authService.registerClient({ ...ctx.payload, branchId: undefined });
+    expect(ctx.models.Customer.mock.calls[0][0].branchId).toBe('branch-main');
+  });
+
+  test('self-heals a tenant with zero branches by creating the Principal branch', async () => {
+    const ctx = setup({ branch: null, branchCount: 0 });
+    await authService.registerClient(ctx.payload);
+    expect(ctx.models.Branch.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Principal', code: 'PRINCIPAL', isMainBranch: true, isActive: true })
+    );
+    expect(ctx.models.Customer.mock.calls[0][0].branchId).toBe('branch-principal');
+  });
+
+  test('rejects with 404 when branches exist but none is active or main', async () => {
+    const ctx = setup({ branch: null, branchCount: 2 });
     await expect(authService.registerClient(ctx.payload)).rejects.toBeInstanceOf(NotFoundException);
     expect(ctx.models.Customer.create).not.toHaveBeenCalled();
   });

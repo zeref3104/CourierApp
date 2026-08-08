@@ -16,6 +16,8 @@ export const ASYNC_KEYS = {
   // skipped when the device token did not change ("register exactly once per
   // token", task 5.7); the backend dedups anyway.
   pushToken: '@courier/push-token',
+  // User-selected app language, persisted so the choice survives restarts.
+  language: '@courier/language',
 } as const;
 
 /**
@@ -85,6 +87,16 @@ export async function loadPushToken(): Promise<string | null> {
  */
 export async function clearPushToken(): Promise<void> {
   await AsyncStorage.removeItem(ASYNC_KEYS.pushToken);
+}
+
+/** Persist the user-selected app language (e.g. 'en'). Not a secret. */
+export async function saveLanguage(language: string): Promise<void> {
+  await AsyncStorage.setItem(ASYNC_KEYS.language, language);
+}
+
+/** Read the persisted app language, or null when the user never chose one. */
+export async function loadLanguage(): Promise<string | null> {
+  return AsyncStorage.getItem(ASYNC_KEYS.language);
 }
 
 /** Nuke every locally persisted auth/tenant value in one shot (logout). */

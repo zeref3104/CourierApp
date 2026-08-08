@@ -59,6 +59,15 @@ describe('registerClientSchema', () => {
     expectAccept(registerClientSchema, { ...valid, document: '001-1234567-8' });
   });
 
+  test('accepts a payload WITHOUT branchId (backend main-branch fallback)', () => {
+    const { branchId, ...noBranch } = valid;
+    expectAccept(registerClientSchema, noBranch);
+  });
+
+  test('rejects an empty-string branchId when present', () => {
+    expectReject(registerClientSchema, { ...valid, branchId: '' });
+  });
+
   test('rejects missing required fields or a weak password', () => {
     expectReject(registerClientSchema, { ...valid, email: 'nope' });
     expectReject(registerClientSchema, { ...valid, password: 'weak' });

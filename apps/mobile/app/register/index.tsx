@@ -14,7 +14,10 @@ import { t, getCurrentLanguage } from '@/i18n';
 /**
  * Registration + OTP flow (client-registration spec). Sequence:
  *   1. Pick a company (GET /public/companies) and its active branch
- *      (GET /public/companies/:id/branches).
+ *      (GET /public/companies/:id/branches). Companies with no active
+ *      branches show a single "Principal" option; the backend then falls
+ *      back to the company's main branch (or self-heals a zero-branch
+ *      tenant with a "Principal" branch).
  *   2. Fill the personal form (name/email/phone/document/password) and request
  *      an email OTP.
  *   3. Verify the OTP; "Create account" stays disabled until verified.
@@ -22,6 +25,11 @@ import { t, getCurrentLanguage } from '@/i18n';
  * The account is NEVER created before the OTP verifies (spec guard).
  */
 type Step = 'company' | 'form' | 'otp';
+
+// Placeholders render with Android's hint color by default, which can be
+// invisible against the input background on some devices/themes. Force an
+// explicit grey so the field label is always visible in release builds.
+const PLACEHOLDER_COLOR = '#94a3b8';
 
 export default function RegisterScreen() {
   const setTokens = useAuthStore((s) => s.setTokens);
@@ -61,6 +69,15 @@ export default function RegisterScreen() {
     try {
       const list = await fetchPublicBranches(c.id);
       setBranches(list);
+      // Preselect so "Create account" never stalls silently: first active
+      // branch, or the "Principal" placeholder when the list is empty (the
+      // backend then resolves the main branch / self-heals a zero-branch
+      // tenant). The user can still change the pick.
+      if (list.length > 0) {
+        setBranch(list[0]);
+      } else {
+        setBranch({ id: '', name: t('register.principal') });
+      }
       setStep('form');
     } catch {
       setLoadError(t('register.branchesLoadError'));
@@ -100,13 +117,21 @@ export default function RegisterScreen() {
   };
 
   const submitRegistration = async () => {
-    if (!company || !branch || !otpVerified) return;
+    if (!company || !otpVerified) return;
+    if (!branch) {
+      // Defensive: the "Principal" option is auto-selected on empty branch
+      // lists, so this should be unreachable — never fail silently if it is.
+      setOtpError(t('register.error.selectBranch'));
+      return;
+    }
     setOtpError(null);
     setSubmitting(true);
     try {
       const result = await registerClient({
         companyId: company.id,
-        branchId: branch.id,
+        // The "Principal" option has no real id (empty list): let the backend
+        // resolve the main branch / self-heal a zero-branch tenant.
+        branchId: branch.id || undefined,
         name: name.trim(),
         lastName: lastName.trim(),
         phone: phone.trim(),
@@ -152,23 +177,34 @@ export default function RegisterScreen() {
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.title}>{t('register.selectBranch')}</Text>
-          {branches.map((b) => (
+          {branches.length === 0 ? (
+            // No active branches: offer the company's main branch. The empty id
+            // signals the backend to resolve it (auth.service.registerClient).
             <Pressable
-              key={b.id}
-              style={[styles.card, branch?.id === b.id && styles.cardSelected]}
-              onPress={() => setBranch(b)}
+              style={[styles.card, branch?.id === '' && styles.cardSelected]}
+              onPress={() => setBranch({ id: '', name: t('register.principal') })}
             >
-              <Text style={styles.cardTitle}>{b.name}</Text>
-              {b.address ? <Text style={styles.cardSub}>{b.address}</Text> : null}
+              <Text style={styles.cardTitle}>{t('register.principal')}</Text>
             </Pressable>
-          ))}
+          ) : (
+            branches.map((b) => (
+              <Pressable
+                key={b.id}
+                style={[styles.card, branch?.id === b.id && styles.cardSelected]}
+                onPress={() => setBranch(b)}
+              >
+                <Text style={styles.cardTitle}>{b.name}</Text>
+                {b.address ? <Text style={styles.cardSub}>{b.address}</Text> : null}
+              </Pressable>
+            ))
+          )}
 
-          <TextInput style={styles.input} placeholder={t('register.name')} value={name} onChangeText={setName} />
-          <TextInput style={styles.input} placeholder={t('register.lastName')} value={lastName} onChangeText={setLastName} />
-          <TextInput style={styles.input} placeholder={t('register.phone')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-          <TextInput style={styles.input} placeholder={t('register.document')} value={document} onChangeText={setDocument} />
-          <TextInput style={styles.input} placeholder={t('register.email')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-          <TextInput style={styles.input} placeholder={t('register.password')} value={password} onChangeText={setPassword} secureTextEntry />
+          <TextInput style={styles.input} placeholder={t('register.name')} placeholderTextColor={PLACEHOLDER_COLOR} value={name} onChangeText={setName} />
+          <TextInput style={styles.input} placeholder={t('register.lastName')} placeholderTextColor={PLACEHOLDER_COLOR} value={lastName} onChangeText={setLastName} />
+          <TextInput style={styles.input} placeholder={t('register.phone')} placeholderTextColor={PLACEHOLDER_COLOR} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+          <TextInput style={styles.input} placeholder={t('register.document')} placeholderTextColor={PLACEHOLDER_COLOR} value={document} onChangeText={setDocument} />
+          <TextInput style={styles.input} placeholder={t('register.email')} placeholderTextColor={PLACEHOLDER_COLOR} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+          <TextInput style={styles.input} placeholder={t('register.password')} placeholderTextColor={PLACEHOLDER_COLOR} value={password} onChangeText={setPassword} secureTextEntry />
 
           {loadError ? <Text style={styles.error}>{loadError}</Text> : null}
           <Pressable style={[styles.button, submitting && styles.buttonDisabled]} disabled={submitting} onPress={requestOtp}>
@@ -187,6 +223,7 @@ export default function RegisterScreen() {
         <TextInput
           style={styles.input}
           placeholder={t('otp.codePlaceholder')}
+          placeholderTextColor={PLACEHOLDER_COLOR}
           value={otpCode}
           onChangeText={setOtpCode}
           keyboardType="number-pad"

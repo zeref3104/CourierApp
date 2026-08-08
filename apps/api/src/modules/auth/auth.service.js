@@ -493,8 +493,7 @@ class AuthService {
     });
     if (!license) throw new NotFoundException('Company license is not active');
 
-    // 2. Resolve the tenant connection; the branch must exist, be active, and
-    // belong to this company (branches live in the company's tenant DB).
+    // 2. Resolve the tenant connection; branches live in the company's tenant DB.
     const tenantConnection = await connectionManager.getConnection({
       id: company._id,
       slug: company.slug,
@@ -506,8 +505,33 @@ class AuthService {
       User: tenantConnection.model('User'),
       Role: tenantConnection.model('Role'),
     };
+    // 2b. Resolve the branch. An explicit branchId is preferred, but companies
+    // with no selectable branches (the public endpoint only lists active ones)
+    // must still be able to onboard clients. Fall back to the company's main
+    // branch (isMainBranch, same convention as Package/Customer services) and,
+    // as a last resort, self-heal a legacy tenant with zero branches by
+    // creating the "Principal" branch (mirrors branch.service.js: the first
+    // branch of a company is always the main branch).
     const Branch = tenantConnection.model('Branch');
-    const branch = await Branch.findOne({ _id: branchId, isActive: true });
+    let branch = null;
+    if (branchId) {
+      branch = await Branch.findOne({ _id: branchId, isActive: true });
+    }
+    if (!branch) {
+      branch = await Branch.findOne({ isMainBranch: true, isActive: true });
+    }
+    if (!branch) {
+      const branchCount = await Branch.countDocuments();
+      if (branchCount === 0) {
+        branch = await Branch.create({
+          name: 'Principal',
+          code: 'PRINCIPAL',
+          address: '',
+          isActive: true,
+          isMainBranch: true,
+        });
+      }
+    }
     if (!branch) throw new NotFoundException('Branch is not active or not found');
 
     // 3. The submitted OTP must be valid for the email BEFORE any account is
