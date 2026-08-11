@@ -73,8 +73,11 @@ const activityLogHandler = {
   async onUserLogin(payload) {
     try {
       const { userId, models } = payload;
-      if (models) {
-        await models.ActivityLog.create({
+      // USER_LOGIN payloads carry only { User, Role } (auth.service) — resolve
+      // the tenant ActivityLog through the User model's connection, matching
+      // the other handlers (pkg.model / delivery.model patterns).
+      if (models?.User) {
+        await models.User.db.model('ActivityLog').create({
           userId,
           action: 'user.login',
           resource: 'User',
