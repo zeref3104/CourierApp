@@ -1,7 +1,8 @@
 /**
  * Integration tests for the public registration-lookup endpoints
  * (client-mobile-app task 2.9 / client-registration spec):
- * - GET /public/companies             -> ONLY active + licensed companies,
+ * - GET /public/companies             -> ONLY active + licensed companies
+ *   with a clientCodePrefix (registration-capable only),
  *   minimal DTO { id, slug, name } — no license/plan/internal leakage
  * - GET /public/companies/:id/branches -> ONLY active branches of an
  *   active + licensed company, DTO { id, name, address }; 404 for unknown,
@@ -159,6 +160,27 @@ describe('GET /public/companies', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(0);
+  });
+
+  test('200: excludes licensed companies without a clientCodePrefix (not registration-capable)', async () => {
+    // A legacy company predating clientCodePrefix: active + licensed, but
+    // auth.service.registerClient 404s on it — it must not be offered.
+    const Company = masterConnection.model('Company');
+    const legacy = await Company.create({
+      name: 'Legacy Co',
+      slug: `legacy-${Math.random().toString(36).slice(2, 8)}`,
+      email: 'legacy@example.co',
+      databaseName: `courier_test_public_tenant_${Math.random().toString(36).slice(2, 8)}`,
+    });
+    await makeLicense(legacy._id);
+    const capable = await makeCompany({});
+    await makeLicense(capable._id);
+
+    const res = await supertest(app).get('/public/companies');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].id).toBe(capable._id.toString());
   });
 });
 

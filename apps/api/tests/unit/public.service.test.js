@@ -2,7 +2,8 @@
  * Unit tests for the public registration lookup service (client-registration
  * spec):
  * - listCompanies: ONLY active, non-suspended companies WITH an active/trial
- *   license; DTO is exactly { id, slug, name } — no license/plan leakage.
+ *   license AND a non-empty clientCodePrefix (registration-capable only);
+ *   DTO is exactly { id, slug, name } — no license/plan leakage.
  * - listBranches: only active branches of an active + licensed company;
  *   DTO is exactly { id, name, address }; unknown/inactive/unlicensed company
  *   or malformed id -> NotFoundException (404).
@@ -16,8 +17,8 @@ jest.mock('../../src/services/tenant/connectionManager', () => ({
 }));
 const connectionManager = require('../../src/services/tenant/connectionManager');
 
-function companyDoc({ _id, slug, name, isActive = true, isSuspended = false, planId = null, license } = {}) {
-  return { _id, slug, name, isActive, isSuspended, planId, license };
+function companyDoc({ _id, slug, name, isActive = true, isSuspended = false, planId = null, license, clientCodePrefix } = {}) {
+  return { _id, slug, name, isActive, isSuspended, planId, license, clientCodePrefix };
 }
 
 function licenseDoc({ companyId, status = 'active', endDate = new Date(Date.now() + 86400000) } = {}) {
@@ -45,28 +46,35 @@ function mockMaster({ companies = [], licenses = [], company = null, license = n
 }
 
 describe('publicService.listCompanies', () => {
-  test('returns ONLY active companies with an active license as {id,slug,name}', async () => {
-    const active = companyDoc({ _id: new mongoose.Types.ObjectId(), slug: 'active-co', name: 'Active Co' });
+  test('returns ONLY active, prefix-capable companies with an active license as {id,slug,name}', async () => {
+    const active = companyDoc({ _id: new mongoose.Types.ObjectId(), slug: 'active-co', name: 'Active Co', clientCodePrefix: 'ACT' });
+    const noPrefix = companyDoc({ _id: new mongoose.Types.ObjectId(), slug: 'legacy-co', name: 'Legacy Co' });
     const inactive = companyDoc({ _id: new mongoose.Types.ObjectId(), slug: 'inactive-co', name: 'Inactive Co', isActive: false });
     const suspended = companyDoc({ _id: new mongoose.Types.ObjectId(), slug: 'susp-co', name: 'Susp Co', isSuspended: true });
 
     const { masterConnection, Company, License } = mockMaster({
-      companies: [active, inactive, suspended],
-      licenses: [licenseDoc({ companyId: active._id })],
+      companies: [active, noPrefix, inactive, suspended],
+      licenses: [
+        licenseDoc({ companyId: active._id }),
+        licenseDoc({ companyId: noPrefix._id }),
+      ],
     });
 
     const result = await publicService.listCompanies(masterConnection);
 
     expect(Company.find).toHaveBeenCalledWith({ isActive: true, isSuspended: { $ne: true } });
     expect(License.find).toHaveBeenCalledWith(expect.objectContaining({
-      companyId: { $in: [active._id, inactive._id, suspended._id] },
+      companyId: { $in: [active._id, noPrefix._id, inactive._id, suspended._id] },
     }));
+    // Active + licensed but WITHOUT clientCodePrefix is excluded too:
+    // auth.service.registerClient 404s 'Company is not accepting registrations'
+    // for such companies, so they must not appear as registration options.
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({ id: String(active._id), slug: 'active-co', name: 'Active Co' });
   });
 
   test('excludes companies whose license is not active/trial or is expired', async () => {
-    const expiring = companyDoc({ _id: new mongoose.Types.ObjectId(), slug: 'exp', name: 'Expiring' });
+    const expiring = companyDoc({ _id: new mongoose.Types.ObjectId(), slug: 'exp', name: 'Expiring', clientCodePrefix: 'EXP' });
     const expired = companyDoc({ _id: new mongoose.Types.ObjectId(), slug: 'expired', name: 'Expired' });
     const cancelled = companyDoc({ _id: new mongoose.Types.ObjectId(), slug: 'canc', name: 'Cancelled' });
     const none = companyDoc({ _id: new mongoose.Types.ObjectId(), slug: 'none', name: 'No License' });
@@ -123,6 +131,38 @@ describe('publicService.listCompanies', () => {
 
   test('returns an empty array when no company qualifies', async () => {
     const { masterConnection } = mockMaster({ companies: [], licenses: [] });
+    const result = await publicService.listCompanies(masterConnection);
+    expect(result).toEqual([]);
+  });
+
+  test('excludes licensed companies without a clientCodePrefix (not registration-capable)', async () => {
+    const capable = companyDoc({ _id: new mongoose.Types.ObjectId(), slug: 'cap', name: 'Cap Co', clientCodePrefix: 'CAP' });
+    // Legacy company predating the clientCodePrefix field: active + licensed
+    // but auth.service.registerClient would 404 on it ('Company is not
+    // accepting registrations'), so it must never be offered for registration.
+    const legacy = companyDoc({ _id: new mongoose.Types.ObjectId(), slug: 'legacy', name: 'Legacy Co' });
+
+    const { masterConnection } = mockMaster({
+      companies: [capable, legacy],
+      licenses: [
+        licenseDoc({ companyId: capable._id }),
+        licenseDoc({ companyId: legacy._id }),
+      ],
+    });
+
+    const result = await publicService.listCompanies(masterConnection);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].slug).toBe('cap');
+  });
+
+  test('excludes licensed companies with a blank clientCodePrefix', async () => {
+    const blank = companyDoc({ _id: new mongoose.Types.ObjectId(), slug: 'blank', name: 'Blank Co', clientCodePrefix: '   ' });
+    const { masterConnection } = mockMaster({
+      companies: [blank],
+      licenses: [licenseDoc({ companyId: blank._id })],
+    });
+
     const result = await publicService.listCompanies(masterConnection);
     expect(result).toEqual([]);
   });

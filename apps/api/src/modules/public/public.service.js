@@ -7,6 +7,8 @@ const NotFoundException = require('../../exceptions/NotFoundException');
  *
  * Both endpoints are pre-auth and pre-tenant (whitelisted in tenantResolver):
  * - GET /public/companies         -> active companies with an active license
+ *   AND a clientCodePrefix (registration-capable only; auth.service.registerClient
+ *   404s 'Company is not accepting registrations' when the prefix is missing)
  * - GET /public/companies/:id/branches -> active branches of an active company
  *
  * DTOs are deliberately minimal so no license, plan, pricing, databaseName or
@@ -32,8 +34,10 @@ function toBranchPublicDto(branch) {
 class PublicService {
   /**
    * Active companies with an active/trial, non-expired license, as
-   * [{ id, slug, name }]. Inactive/suspended companies and companies whose
-   * license is missing, cancelled, expired or ended are excluded.
+   * [{ id, slug, name }]. Inactive/suspended companies, companies whose
+   * license is missing, cancelled, expired or ended, and companies WITHOUT a
+   * clientCodePrefix (not registration-capable — auth.service.registerClient
+   * 404s on them) are excluded.
    */
   async listCompanies(masterConnection) {
     const Company = masterConnection.model('Company');
@@ -56,6 +60,7 @@ class PublicService {
     const licensedIds = new Set(licenses.map((l) => String(l.companyId)));
     return companies
       .filter((c) => licensedIds.has(String(c._id)))
+      .filter((c) => c.clientCodePrefix && String(c.clientCodePrefix).trim().length > 0)
       .map(toCompanyPublicDto);
   }
 
