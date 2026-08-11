@@ -1,11 +1,16 @@
 /**
- * Unit tests for authService.loginByCode + authService.resolveTenantByCode
- * (client-mobile-app tasks 3.2/3.3, client-code-login spec, design D9):
- * - tenant resolution: parse prefix from code -> Company.findOne({clientCodePrefix})
+ * Unit tests for authService.loginByCode / authService.clientLogin /
+ * authService.resolveTenantByCode / authService.resolveTenantByEmail
+ * (client-mobile-app tasks 3.2/3.3, client-code-login spec design D9,
+ * extended by client-email-login):
+ * - code tenant resolution: parse prefix -> Company.findOne({clientCodePrefix})
  *   -> active/license check -> connectionManager.getConnection
- * - customer lookup by full code, linked isClient User, bcrypt compare
- * - 404 unknown prefix / unknown customer code; 401 wrong password / locked /
- *   inactive user / inactive company / missing license
+ * - email tenant resolution: master ClientEmailIndex -> single match (404 none /
+ *   409 ambiguous) -> Company + active/license check -> tenant connection
+ * - customer lookup by full code or normalized email, linked isClient User,
+ *   bcrypt compare
+ * - 404 unknown prefix / unknown code / unknown email / unknown company;
+ *   401 wrong password / locked / inactive user / inactive company / missing license
  * - token issuance: client JWT claims + refresh token (hash stored)
  * - lockout reuse: same 5-attempt / 30-min pattern as staff auth.service.login
  */
@@ -15,6 +20,7 @@ const jwtService = require('../../src/services/auth/jwt.service');
 const tokenService = require('../../src/modules/auth/token.service');
 const NotFoundException = require('../../src/exceptions/NotFoundException');
 const UnauthorizedException = require('../../src/exceptions/UnauthorizedException');
+const ConflictException = require('../../src/exceptions/ConflictException');
 
 jest.mock('../../src/services/tenant/connectionManager', () => ({ getConnection: jest.fn() }));
 jest.mock('../../src/services/auth/jwt.service', () => ({ generateAccessToken: jest.fn() }));
@@ -33,11 +39,12 @@ function makeDoc(overrides = {}) {
   };
 }
 
-/** A model-like constructor with the statics loginByCode uses (findOne/findById). */
-function makeModel({ findOne, findById } = {}) {
+/** A model-like constructor with the statics the auth service uses. */
+function makeModel({ findOne, findById, find } = {}) {
   const Model = jest.fn();
   Model.findOne = findOne || jest.fn();
   Model.findById = findById || jest.fn();
+  Model.find = find || jest.fn();
   return Model;
 }
 
@@ -83,8 +90,17 @@ function setup(overrides = {}) {
           previousRefreshTokenHash: null,
         });
 
+  // Master ClientEmailIndex lookups (client-email-login): default resolves no
+  // entry (the code path never touches it); email tests pass their entries via
+  // the `clientIndexEntries` override.
+  const clientIndexEntries =
+    overrides.clientIndexEntries !== undefined ? overrides.clientIndexEntries : [];
+
   const models = {
-    Company: makeModel({ findOne: jest.fn().mockResolvedValue(company) }),
+    Company: makeModel({
+      findOne: jest.fn().mockResolvedValue(company),
+      findById: jest.fn().mockResolvedValue(company),
+    }),
     License: makeModel({ findOne: jest.fn().mockResolvedValue(license) }),
     Customer: makeModel({ findOne: jest.fn().mockResolvedValue(customer) }),
     User: makeModel({
@@ -92,6 +108,9 @@ function setup(overrides = {}) {
       findOne: jest.fn().mockReturnValue({ select: jest.fn().mockResolvedValue(user) }),
     }),
     Role: makeModel({ findById: jest.fn().mockResolvedValue(role) }),
+    ClientEmailIndex: makeModel({
+      find: jest.fn().mockResolvedValue(clientIndexEntries),
+    }),
   };
 
   const masterConnection = { model: jest.fn((name) => models[name]) };
@@ -249,5 +268,137 @@ describe('authService.loginByCode', () => {
     await authService.loginByCode({ code: 'RB-000001', password: 'Passw0rd!', masterConnection: ctx.masterConnection });
     expect(ctx.user.failedLoginAttempts).toBe(0);
     expect(ctx.user.lockedUntil).toBeNull();
+  });
+});
+
+describe('authService.resolveTenantByEmail', () => {
+  test('resolves the company + tenant connection from a single index entry', async () => {
+    const ctx = setup({ clientIndexEntries: [{ companyId: 'company-1', tenantSlug: 'rapid-box', isActive: true }] });
+    const result = await authService.resolveTenantByEmail('cliente@example.com', ctx.masterConnection);
+
+    expect(ctx.models.ClientEmailIndex.find).toHaveBeenCalledWith({ email: 'cliente@example.com', isActive: true });
+    expect(ctx.models.Company.findById).toHaveBeenCalledWith('company-1');
+    expect(result.company.slug).toBe('rapid-box');
+    expect(result.tenantConnection).toBe(ctx.tenantConnection);
+    expect(connectionManager.getConnection).toHaveBeenCalled();
+  });
+
+  test('normalizes the email to lowercase before the index lookup', async () => {
+    const ctx = setup({ clientIndexEntries: [{ companyId: 'company-1', tenantSlug: 'rapid-box', isActive: true }] });
+    await authService.resolveTenantByEmail('  Cliente@Example.COM ', ctx.masterConnection);
+    expect(ctx.models.ClientEmailIndex.find).toHaveBeenCalledWith({ email: 'cliente@example.com', isActive: true });
+  });
+
+  test('throws 404 when the email has no index entry', async () => {
+    const ctx = setup();
+    await expect(authService.resolveTenantByEmail('nobody@example.com', ctx.masterConnection)).rejects.toBeInstanceOf(
+      NotFoundException
+    );
+    expect(connectionManager.getConnection).not.toHaveBeenCalled();
+  });
+
+  test('throws 409 when the email is indexed in several companies (ambiguous)', async () => {
+    const ctx = setup({
+      clientIndexEntries: [
+        { companyId: 'company-1', tenantSlug: 'rapid-box', isActive: true },
+        { companyId: 'company-2', tenantSlug: 'fresh-freight', isActive: true },
+      ],
+    });
+    await expect(authService.resolveTenantByEmail('cliente@example.com', ctx.masterConnection)).rejects.toBeInstanceOf(
+      ConflictException
+    );
+    expect(connectionManager.getConnection).not.toHaveBeenCalled();
+  });
+
+  test('throws 404 when the indexed company no longer exists', async () => {
+    const ctx = setup({ clientIndexEntries: [{ companyId: 'company-1', tenantSlug: 'rapid-box', isActive: true }], company: null });
+    await expect(authService.resolveTenantByEmail('cliente@example.com', ctx.masterConnection)).rejects.toBeInstanceOf(
+      NotFoundException
+    );
+    expect(connectionManager.getConnection).not.toHaveBeenCalled();
+  });
+
+  test('throws 401 when the indexed company is inactive or suspended', async () => {
+    const ctx = setup({ clientIndexEntries: [{ companyId: 'company-1', tenantSlug: 'rapid-box', isActive: true }], company: { ...BASE_COMPANY, isActive: false } });
+    await expect(authService.resolveTenantByEmail('cliente@example.com', ctx.masterConnection)).rejects.toBeInstanceOf(
+      UnauthorizedException
+    );
+    expect(connectionManager.getConnection).not.toHaveBeenCalled();
+  });
+
+  test('throws 401 when the indexed company has no valid license', async () => {
+    const ctx = setup({ clientIndexEntries: [{ companyId: 'company-1', tenantSlug: 'rapid-box', isActive: true }], license: null });
+    await expect(authService.resolveTenantByEmail('cliente@example.com', ctx.masterConnection)).rejects.toBeInstanceOf(
+      UnauthorizedException
+    );
+    expect(connectionManager.getConnection).not.toHaveBeenCalled();
+  });
+});
+
+describe('authService.clientLogin (email identifier)', () => {
+  const happyIndex = [{ companyId: 'company-1', tenantSlug: 'rapid-box', isActive: true }];
+
+  test('200: resolves via the email index and issues the same client tokens/profile', async () => {
+    const ctx = setup({ clientIndexEntries: happyIndex });
+    const result = await authService.clientLogin({
+      email: 'Cliente@Example.com',
+      password: 'Passw0rd!',
+      masterConnection: ctx.masterConnection,
+    });
+
+    expect(result.accessToken).toBe('access-token-1');
+    expect(result.refreshToken).toBe('refresh-token-1');
+    expect(result.client).toEqual({
+      id: 'customer-1',
+      code: 'RB-000001',
+      name: 'Cliente Uno',
+      company: { slug: 'rapid-box', name: 'Rapid Box', prefix: 'RB' },
+    });
+
+    // Tenant resolved from the index; Customer found by NORMALIZED email
+    expect(ctx.models.ClientEmailIndex.find).toHaveBeenCalledWith({ email: 'cliente@example.com', isActive: true });
+    expect(ctx.models.Customer.findOne).toHaveBeenCalledWith({ email: 'cliente@example.com' });
+    // Rest of the flow is the canonical one: linked isClient User + bcrypt + tokens
+    expect(ctx.models.User.findOne).toHaveBeenCalledWith({ clientId: 'customer-1', isClient: true });
+    expect(ctx.user.comparePassword).toHaveBeenCalledWith('Passw0rd!');
+    expect(jwtService.generateAccessToken).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'client', isClient: true, clientId: 'customer-1', tenant: 'rapid-box' })
+    );
+  });
+
+  test('404: email resolves a tenant but no Customer has that email', async () => {
+    const ctx = setup({ clientIndexEntries: happyIndex, customer: null });
+    await expect(
+      authService.clientLogin({ email: 'cliente@example.com', password: 'Passw0rd!', masterConnection: ctx.masterConnection })
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(ctx.user.comparePassword).not.toHaveBeenCalled();
+    expect(jwtService.generateAccessToken).not.toHaveBeenCalled();
+  });
+
+  test('409: an email registered in several companies is rejected before the tenant opens', async () => {
+    const ctx = setup({
+      clientIndexEntries: [
+        { companyId: 'company-1', tenantSlug: 'rapid-box', isActive: true },
+        { companyId: 'company-2', tenantSlug: 'fresh-freight', isActive: true },
+      ],
+    });
+    await expect(
+      authService.clientLogin({ email: 'cliente@example.com', password: 'Passw0rd!', masterConnection: ctx.masterConnection })
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(ctx.models.Customer.findOne).not.toHaveBeenCalled();
+    expect(jwtService.generateAccessToken).not.toHaveBeenCalled();
+  });
+
+  test('401: wrong password on the email path increments the attempt counter (shared lockout)', async () => {
+    const ctx = setup({
+      clientIndexEntries: happyIndex,
+      user: makeDoc({ _id: 'user-1', clientId: 'customer-1', isClient: true, isActive: true, failedLoginAttempts: 0, comparePassword: jest.fn().mockResolvedValue(false) }),
+    });
+    await expect(
+      authService.clientLogin({ email: 'cliente@example.com', password: 'wrong', masterConnection: ctx.masterConnection })
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(ctx.user.failedLoginAttempts).toBe(1);
+    expect(ctx.user.save).toHaveBeenCalled();
+    expect(jwtService.generateAccessToken).not.toHaveBeenCalled();
   });
 });

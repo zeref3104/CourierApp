@@ -243,15 +243,35 @@ const registerClientSchema = z.object({
   otpCode,
 });
 
-// --- Client code login + body refresh (client-code-login spec, design D9/D10) ---
-// POST /auth/client/login — the global client code {PREFIX}-{SEQ} IS the login
-// identifier; an email is explicitly NOT accepted (auth-specs delta §2.1).
-const clientCodeLoginSchema = z.object({
-  code: z
-    .string()
-    .regex(new RegExp(CLIENT_CODE_PATTERN), 'Code must be a valid client code (e.g. CS-000001)'),
-  password: z.string().min(1, 'Password is required'),
-});
+// --- Client login (code | email) + body refresh (client-code-login spec,
+// design D9/D10) ---
+// POST /auth/client/login — the global client code {PREFIX}-{SEQ} OR the
+// client's email is the identifier, plus password. Exactly one of code|email
+// must be present: both-provided and both-absent are rejected (422).
+const clientCodeLoginSchema = z
+  .object({
+    code: z
+      .string()
+      .regex(new RegExp(CLIENT_CODE_PATTERN), 'Code must be a valid client code (e.g. CS-000001)')
+      .optional(),
+    email: z.string().email('Invalid email format').optional(),
+    password: z.string().min(1, 'Password is required'),
+  })
+  .superRefine((value, ctx) => {
+    const hasCode = value.code != null && value.code !== '';
+    const hasEmail = value.email != null && value.email !== '';
+    // Zod is lazy for the code regex, so treat an empty string as absent so
+    // "exactly one identifier" is judged on presence, not on string value.
+    if (hasCode === hasEmail) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [hasCode ? 'email' : 'code'],
+        message: hasCode
+          ? 'Provide either a client code or an email, not both'
+          : 'Provide a client code or an email',
+      });
+    }
+  });
 
 // POST /auth/client/refresh — refresh token travels in the request BODY for
 // React Native (no HTTP-only cookie jar, design D10).

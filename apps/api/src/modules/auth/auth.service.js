@@ -134,21 +134,83 @@ class AuthService {
   }
 
   /**
-   * Code-based client login (client-code-login spec, design D9): the global
-   * client code `{PREFIX}-{SEQ}` is the identifier and the tenant is derived
-   * from it. Reuses the staff lockout pattern (5 failed attempts -> 30 min).
+   * Resolve the tenant for a client login by EMAIL (client-email-login).
+   * The email → company mapping is the master-DB ClientEmailIndex (created at
+   * registration, unique per company so one email may exist in several
+   * tenants). A single match resolves the company exactly like the code path;
+   * ZERO matches → 404; MULTIPLE companies → 409 telling the user to switch to
+   * their global client code (the code is unambiguous).
+   *
+   * @returns {Promise<{company: Object, tenantConnection: Object}>}
+   */
+  async resolveTenantByEmail(email, masterConnection) {
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    const ClientEmailIndex = masterConnection.model('ClientEmailIndex');
+    const entries = await ClientEmailIndex.find({ email: normalizedEmail, isActive: true });
+    if (entries.length === 0) {
+      throw new NotFoundException('No account found with this email');
+    }
+    if (entries.length > 1) {
+      throw new ConflictException(
+        'This email is linked to multiple companies. Sign in with your client code instead.'
+      );
+    }
+
+    const entry = entries[0];
+    const Company = masterConnection.model('Company');
+    const License = masterConnection.model('License');
+    const company = await Company.findById(entry.companyId);
+    if (!company) throw new NotFoundException('No account found with this email');
+
+    if (!company.isActive || company.isSuspended) {
+      throw new UnauthorizedException('Account locked. Try again later.');
+    }
+    const license = await License.findOne({
+      companyId: company._id,
+      status: { $in: ['active', 'trial'] },
+      endDate: { $gte: new Date() },
+    });
+    if (!license) {
+      throw new UnauthorizedException('Account locked. Try again later.');
+    }
+
+    const tenantConnection = await connectionManager.getConnection({
+      id: company._id,
+      slug: company.slug,
+      dbName: company.databaseName,
+      plan: company.planId,
+    });
+
+    return { company, tenantConnection };
+  }
+  /**
+   * Unified client login by GLOBAL CLIENT CODE or EMAIL (client-email-login).
+   * - `code`  -> tenant derived from the code prefix (design D9, unchanged).
+   * - `email` -> tenant derived from the master-DB ClientEmailIndex (single
+   *   match required; 409 when the email is registered in several companies,
+   *   telling the user to switch to their unambiguous client code).
+   * The rest is the established client flow: linked isClient User lookup,
+   * lockout (5 failed attempts -> 30 min), bcrypt compare, refresh-token
+   * rotation and a client-scoped access token.
    *
    * @returns {Promise<{accessToken, refreshToken, client: {id, code, name, company: {slug, name, prefix}}}>}
    */
-  async loginByCode({ code, password, masterConnection }) {
-    const { company, tenantConnection } = await this.resolveTenantByCode(code, masterConnection);
+  async clientLogin({ code, email, password, masterConnection }) {
+    const { company, tenantConnection } = code
+      ? await this.resolveTenantByCode(code, masterConnection)
+      : await this.resolveTenantByEmail(email, masterConnection);
 
     const Customer = tenantConnection.model('Customer');
     const User = tenantConnection.model('User');
     const Role = tenantConnection.model('Role');
 
-    const customer = await Customer.findOne({ code });
-    if (!customer) throw new NotFoundException('Client code not found');
+    const customer = code
+      ? await Customer.findOne({ code })
+      : await Customer.findOne({ email: String(email).trim().toLowerCase() });
+    if (!customer) {
+      throw new NotFoundException(code ? 'Client code not found' : 'No account found with this email');
+    }
 
     // The customer's linked isClient User (registered via /auth/client/register).
     const user = await User.findOne({ clientId: customer._id, isClient: true }).select('+password');
@@ -213,6 +275,14 @@ class AuthService {
         },
       },
     };
+  }
+
+  /**
+   * Back-compat code-only alias for clientLogin (client-code-login spec, D9).
+   * Kept so existing callers/tests of the code path keep working.
+   */
+  async loginByCode({ code, password, masterConnection }) {
+    return this.clientLogin({ code, password, masterConnection });
   }
 
   async superadminLogin(email, password, masterConnection) {
@@ -590,7 +660,30 @@ class AuthService {
 
     const { customer, user } = await this._createClientPair(models, customerData, userData);
 
-    // 7. Consume the OTP — single-use, never reusable after registration.
+    // 7. Index the client's email → tenant on the master DB (ClientEmailIndex,
+    // unique per company — the same email may hold accounts in several companies)
+    // so email login can resolve the company. This MUST happen BEFORE the OTP is
+    // consumed and is compensated on failure: if the index write fails the pair
+    // is deleted and the OTP stays reusable, so no stranded account ever persists
+    // (a retry then takes the happy path again instead of hitting 409).
+    // Note: the index cannot ride the tenant session transaction (separate master
+    // connection), so correctness comes from ordering + compensation (design D8).
+    try {
+      const ClientEmailIndex = masterConnection.model('ClientEmailIndex');
+      // Idempotent upsert: a successful-but-lost-response retry must not 11000.
+      await ClientEmailIndex.updateOne(
+        { email: normalizedEmail, companyId: company._id },
+        { $setOnInsert: { email: normalizedEmail, companyId: company._id, isActive: true } },
+        { upsert: true }
+      );
+    } catch (err) {
+      logger.error('[AUTH] failed to index client email → tenant, compensating account creation', { error: err.message });
+      await models.Customer.deleteOne({ _id: customer._id }).catch(() => {});
+      await models.User.deleteOne({ _id: user._id }).catch(() => {});
+      throw err;
+    }
+
+    // 8. Consume the OTP — single-use, never reusable after registration.
     otpDoc.consumedAt = new Date();
     await otpDoc.save();
 

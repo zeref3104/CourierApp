@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { AxiosError } from 'axios';
 import { loginClient, tenantContextFrom } from '@/api/clientAuth';
 import { useAuthStore } from '@/stores/authStore';
@@ -24,18 +24,24 @@ const LANGUAGE_FLAGS: Record<SupportedLanguage, string> = {
 // explicit grey so the field label is always visible in release builds.
 const PLACEHOLDER_COLOR = '#94a3b8';
 
+// Mirrors the register screen's client-side email check; only applied when the
+// identifier actually looks like an email (contains "@").
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 /**
- * Login screen (client-code-login spec). Code + password ONLY — no email and
- * no company selector; the tenant is resolved server-side from the code's
- * prefix (design D9). On success the tokens go to the auth store (refresh →
- * keychain) and the tenant context is derived from the response and persisted
- * so restart keeps the correct x-tenant-slug header.
+ * Login screen (client-code-login spec, extended by client-email-login).
+ * A single `identifier` field accepts the global client code OR the client
+ * email, plus password — no company selector; the tenant is resolved
+ * server-side (code: prefix lookup, email: master ClientEmailIndex). On
+ * success the tokens go to the auth store (refresh → keychain) and the tenant
+ * context is derived from the response and persisted so restart keeps the
+ * correct x-tenant-slug header.
  *
  * The language selector lets the user pick the app language pre-login; the
  * choice is persisted and re-applied on boot (restoreSession).
  */
 export default function LoginScreen() {
-  const [code, setCode] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -57,30 +63,46 @@ export default function LoginScreen() {
 
   const onSubmit = async () => {
     setError(null);
-    if (!code.trim()) {
-      setError(t('clientLogin.codeRequired'));
+    const identifierValue = identifier.trim();
+    if (!identifierValue) {
+      setError(t('clientLogin.identifierRequired'));
+      return;
+    }
+    // If the identifier looks like an email ("@"), require a basic format.
+    if (identifierValue.includes('@') && !EMAIL_RE.test(identifierValue)) {
+      setError(t('clientLogin.error.emailInvalid'));
       return;
     }
     setSubmitting(true);
     try {
-      const { accessToken, refreshToken, client } = await loginClient(code.trim(), password);
+      const { accessToken, refreshToken, client } = await loginClient(identifierValue, password);
       // Persist refresh token + status first, then client profile and tenant.
       await setTokens(accessToken, refreshToken);
       setClient(client);
       // login response carries company slug/prefix but not company id;
       // empty id is acceptable — x-tenant-slug only needs the slug.
-      await setTenant(tenantContextFrom(client, ''));
+      try {
+        await setTenant(tenantContextFrom(client, ''));
+      } catch (tenantErr) {
+        // The session already exists — never strand the user on a tenant
+        // persistence hiccup. Surface a non-blocking notice only.
+        console.warn('[login] failed to persist tenant context after successful sign in', tenantErr);
+      }
+      router.replace('/(app)');
     } catch (err) {
       const status = (err as AxiosError)?.response?.status;
-      if (status === 404) setError(t('clientLogin.error.codeNotFound'));
+      const isEmailIdentifier = identifierValue.includes('@');
+      if (status === 404)
+        setError(isEmailIdentifier ? t('clientLogin.error.emailNotFound') : t('clientLogin.error.codeNotFound'));
       else if (status === 401) setError(t('clientLogin.error.invalidCredentials'));
       else if (status === 403) setError(t('clientLogin.error.companyUnavailable'));
+      // 409 only occurs on the email path: the email maps to several companies,
+      // so the user must fall back to their unambiguous client code.
+      else if (status === 409) setError(t('clientLogin.error.emailAmbiguous'));
       else setError(t('clientLogin.error.generic'));
     } finally {
       setSubmitting(false);
     }
-    // On success the auth store status flips to `authenticated`; the root
-    // `index` guard <Redirect>s to the dashboard group. No manual nav.
   };
 
   return (
@@ -114,13 +136,14 @@ export default function LoginScreen() {
 
       <TextInput
         style={styles.input}
-        placeholder={t('clientLogin.codePlaceholder')}
+        placeholder={t('clientLogin.identifierPlaceholder')}
         placeholderTextColor={PLACEHOLDER_COLOR}
-        value={code}
-        onChangeText={setCode}
-        autoCapitalize="characters"
+        value={identifier}
+        onChangeText={setIdentifier}
+        autoCapitalize="none"
         autoCorrect={false}
-        testID="login-code"
+        keyboardType={identifier.includes('@') ? 'email-address' : 'default'}
+        testID="login-identifier"
       />
       <TextInput
         style={styles.input}

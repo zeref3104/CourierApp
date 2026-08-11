@@ -44,13 +44,14 @@ function makeDoc(overrides = {}) {
  * and the statics `findOne` / `create` / `deleteOne` (fallback + lookups).
  * Constructor calls are recorded on `Model.mock.calls` for assertions.
  */
-function makeModel({ findOne, create, deleteOne, countDocuments, startSession, docOverrides = {} } = {}) {
+function makeModel({ findOne, create, deleteOne, updateOne, countDocuments, startSession, docOverrides = {} } = {}) {
   const Model = jest.fn((data) =>
     makeDoc({ ...docOverrides, ...data, _id: docOverrides._id || (data && data._id) || 'model-1' })
   );
   Model.findOne = findOne || jest.fn();
   Model.create = create || jest.fn();
   Model.deleteOne = deleteOne || jest.fn().mockResolvedValue({ deletedCount: 1 });
+  Model.updateOne = updateOne || jest.fn().mockResolvedValue({ upsertedId: { _id: 'index-1' } });
   Model.countDocuments = countDocuments || jest.fn().mockResolvedValue(0);
   Model.db = { startSession: startSession || jest.fn().mockResolvedValue(null) };
   return Model;
@@ -148,6 +149,8 @@ function setup(overrides = {}) {
     }),
     Customer: customerModel,
     User: userModel,
+    // Master email→tenant index created at registration (client-email-login).
+    ClientEmailIndex: makeModel({}),
   };
 
   const masterConnection = { model: jest.fn((name) => models[name]) };
@@ -228,6 +231,22 @@ describe('authService.registerClient', () => {
     await authService.registerClient(ctx.payload);
     expect(ctx.session.withTransaction).toHaveBeenCalledTimes(1);
     expect(ctx.session.endSession).toHaveBeenCalledTimes(1);
+  });
+
+  test('indexes the client email → tenant on the master DB at registration', async () => {
+    const ctx = setup();
+    await authService.registerClient(ctx.payload);
+    // Idempotent upsert (normalized email, company + per-company uniqueness);
+    // must run BEFORE the OTP is consumed so a failed index write can be
+    // compensated without leaving a stranded account.
+    expect(ctx.models.ClientEmailIndex.updateOne).toHaveBeenCalledWith(
+      { email: 'cliente@example.com', companyId: 'company-1' },
+      { $setOnInsert: { email: 'cliente@example.com', companyId: 'company-1', isActive: true } },
+      { upsert: true }
+    );
+    const otpSaveCallIndex = ctx.otpDoc.save.mock.invocationCallOrder[0];
+    const indexWriteCallIndex = ctx.models.ClientEmailIndex.updateOne.mock.invocationCallOrder[0];
+    expect(indexWriteCallIndex).toBeLessThan(otpSaveCallIndex);
   });
 
   test('rejects with 404 when the company is not found or inactive', async () => {

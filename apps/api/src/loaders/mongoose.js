@@ -29,6 +29,7 @@ async function initMaster() {
   connection.model('License', require('../models/master/License'));
   connection.model('SuperAdmin', require('../models/master/SuperAdmin'));
   connection.model('TenantUserIndex', require('../models/master/TenantUserIndex'));
+  connection.model('ClientEmailIndex', require('../models/master/ClientEmailIndex'));
   connection.model('BlacklistedToken', require('../models/master/BlacklistedToken'));
   connection.model('CompanyCounter', require('../models/master/CompanyCounter'));
   connection.model('OtpCode', require('../models/master/OtpCode'));

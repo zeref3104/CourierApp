@@ -12,7 +12,9 @@
     "test:integration": "jest --config jest.integration.config.js",
     "seed": "node scripts/seed.js",
     "migrate:client-codes": "node scripts/migrate-client-codes.js",
-    "migrate:client-codes:dry-run": "node scripts/migrate-client-codes.js --dry-run"
+    "migrate:client-codes:dry-run": "node scripts/migrate-client-codes.js --dry-run",
+    "backfill:client-email-index": "node scripts/backfill-client-email-index.js",
+    "backfill:client-email-index:dry-run": "node scripts/backfill-client-email-index.js --dry-run"
   },
   "dependencies": {
     "@courier/constants": "^1.0.0",

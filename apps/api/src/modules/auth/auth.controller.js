@@ -126,16 +126,17 @@ const authController = {
   }),
 
   /**
-   * POST /auth/client/login — code + password login (client-code-login spec,
-   * design D9). The tenant is resolved server-side from the code prefix; the
+   * POST /auth/client/login — client code OR email + password (client-code-login
+   * spec design D9, extended by client-email-login). The tenant is resolved
+   * server-side (code: prefix lookup; email: master ClientEmailIndex) and the
    * response carries the client access + refresh tokens in the BODY (React
    * Native has no cookie jar — design D10).
    */
   clientCodeLogin: asyncHandler(async (req, res) => {
-    const { code, password } = req.body;
+    const { code, email, password } = req.body;
     const masterConnection = req.app.locals.masterConnection;
 
-    const result = await authService.loginByCode({ code, password, masterConnection });
+    const result = await authService.clientLogin({ code, email, password, masterConnection });
 
     apiResponse.success(res, {
       accessToken: result.accessToken,

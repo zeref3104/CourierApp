@@ -15,9 +15,18 @@ interface LoginResponse {
   client: ClientProfile;
 }
 
-/** POST /auth/client/login — code + password only, no email/company. */
-export async function loginClient(code: string, password: string): Promise<LoginResponse> {
-  const { data } = await api.post<{ data: LoginResponse }>('/auth/client/login', { code, password });
+/**
+ * POST /auth/client/login — sign in with an email OR a global client code,
+ * plus the password. The payload carries only the provided identifier: an
+ * email is posted as `{ email, password }` (lowercased to match server
+ * normalization), a code as `{ code, password }` (uppercased — codes are
+ * generated as PREFIX-000000 and the backend matches them case-sensitively).
+ */
+export async function loginClient(identifier: string, password: string): Promise<LoginResponse> {
+  const payload = identifier.includes('@')
+    ? { email: identifier.trim().toLowerCase(), password }
+    : { code: identifier.trim().toUpperCase(), password };
+  const { data } = await api.post<{ data: LoginResponse }>('/auth/client/login', payload);
   return data.data;
 }
 
