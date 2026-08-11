@@ -1,5 +1,14 @@
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+
+/**
+ * expo-secure-store is a native-only module (Keychain / Keystore). On web the
+ * official Expo pattern is localStorage as the fallback backend (see
+ * expo-secure-store docs: "not available on the web"). We branch on the
+ * platform so the refresh token persists on every target the app runs on.
+ */
+const isWeb = Platform.OS === 'web' || process.env.EXPO_OS === 'web';
 
 /**
  * Key space used to namespace secure storage keys. Keeping a single namespace
@@ -27,16 +36,27 @@ export const ASYNC_KEYS = {
  * read back on boot.
  */
 export async function saveRefreshToken(token: string): Promise<void> {
+  if (isWeb) {
+    localStorage.setItem(SECURE_KEYS.refreshToken, token);
+    return;
+  }
   await SecureStore.setItemAsync(SECURE_KEYS.refreshToken, token);
 }
 
 /** Read the stored refresh token, or null when absent/corrupt. */
 export async function loadRefreshToken(): Promise<string | null> {
+  if (isWeb) {
+    return localStorage.getItem(SECURE_KEYS.refreshToken);
+  }
   return SecureStore.getItemAsync(SECURE_KEYS.refreshToken);
 }
 
 /** Delete the stored refresh token (logout / refresh failure). */
 export async function clearRefreshToken(): Promise<void> {
+  if (isWeb) {
+    localStorage.removeItem(SECURE_KEYS.refreshToken);
+    return;
+  }
   await SecureStore.deleteItemAsync(SECURE_KEYS.refreshToken);
 }
 
