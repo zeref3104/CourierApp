@@ -15,7 +15,7 @@ const paymentSchema = new mongoose.Schema(
       enum: ['pending', 'paid', 'refunded'],
       default: 'paid',
     },
-    receiptNumber: { type: String, unique: true, sparse: true },
+    receiptNumber: { type: String },
     processedById: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
     notes: { type: String, trim: true },

@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const receiptSchema = new mongoose.Schema(
   {
-    receiptNumber: { type: String, required: true, unique: true },
+    receiptNumber: { type: String, required: true },
     paymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment', required: true },
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
     packages: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Package', required: true }],

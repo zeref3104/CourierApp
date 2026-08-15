@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const tenantUserIndexSchema = new mongoose.Schema(
   {
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    email: { type: String, required: true, lowercase: true, trim: true },
     companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
     tenantSlug: { type: String, required: true },
     isActive: { type: Boolean, default: true },

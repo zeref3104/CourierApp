@@ -4,12 +4,12 @@ const bcrypt = require('bcryptjs');
 const companySchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
-    slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    slug: { type: String, required: true, lowercase: true, trim: true },
     email: { type: String, required: true, lowercase: true, trim: true },
     phone: { type: String, trim: true },
     address: { type: String, trim: true },
     logo: { type: String },
-    databaseName: { type: String, required: true, unique: true },
+    databaseName: { type: String, required: true },
     isActive: { type: Boolean, default: true },
     isSuspended: { type: Boolean, default: false },
     settings: {

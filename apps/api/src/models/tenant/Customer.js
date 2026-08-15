@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const customerSchema = new mongoose.Schema(
   {
-    code: { type: String, required: true, unique: true },
+    code: { type: String, required: true },
     name: { type: String, required: true, trim: true },
     lastName: { type: String, required: true, trim: true },
     document: { type: String, trim: true },

@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const counterSchema = new mongoose.Schema(
   {
-    key: { type: String, required: true, unique: true },
+    key: { type: String, required: true },
     seq: { type: Number, default: 0 },
   },
   { timestamps: true }
