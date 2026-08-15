@@ -33,12 +33,14 @@ async function tenantResolver(req, res, next) {
     const slugFromSubdomain = host.split('.')[0];
     const tenantSlug = req.headers['x-tenant-slug'] || slugFromSubdomain;
 
-    if (!tenantSlug || tenantSlug === 'localhost' || tenantSlug === 'www') {
-      if (process.env.NODE_ENV === 'development') {
-        // In development, skip tenant resolution — auth middleware resolves from JWT
-        return next();
-      }
-      return next(new TenantNotFoundException(tenantSlug || 'unknown'));
+    // Infrastructure subdomains are NOT tenant slugs. When the API is served
+    // from a subdomain like api.<domain> and the client does not send
+    // x-tenant-slug, skip resolution here and let the auth middleware resolve
+    // the tenant from the JWT (auth.js). Protected routes always run auth, so
+    // unauthenticated requests still fail with 401 instead of a bogus 404.
+    const RESERVED_SLUGS = ['localhost', 'www', 'api', 'app'];
+    if (!tenantSlug || RESERVED_SLUGS.includes(tenantSlug)) {
+      return next();
     }
 
     const slug = req.tenantSlug || tenantSlug;
