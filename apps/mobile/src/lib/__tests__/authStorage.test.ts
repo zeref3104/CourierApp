@@ -7,6 +7,8 @@ import {
   loadPushToken,
   saveLanguage,
   savePushToken,
+  saveRefreshToken,
+  loadRefreshToken,
   SECURE_KEYS,
   ASYNC_KEYS,
 } from '@/lib/authStorage';
@@ -70,6 +72,42 @@ describe('authStorage push token lifecycle', () => {
     expect(AsyncStorage.removeItem).toHaveBeenCalledWith(ASYNC_KEYS.tenant);
     expect(AsyncStorage.removeItem).toHaveBeenCalledWith(ASYNC_KEYS.pushToken);
     await expect(loadPushToken()).resolves.toBeNull();
+  });
+});
+
+describe('authStorage refresh-token fallback (Android Keystore failure)', () => {
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    mockMemory.clear();
+  });
+
+  it('falls back to AsyncStorage when SecureStore.setItemAsync throws', async () => {
+    // Simulate a broken Keystore (stale encrypted entry / device hiccup): the
+    // native write rejects and must NOT block saving the refresh token.
+    (SecureStore.setItemAsync as jest.Mock).mockRejectedValueOnce(new Error('Keystore operation failed'));
+
+    await saveRefreshToken('rt-fallback');
+
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(SECURE_KEYS.refreshToken, 'rt-fallback');
+    await expect(loadRefreshToken()).resolves.toBe('rt-fallback');
+  });
+
+  it('returns the AsyncStorage copy when SecureStore.getItemAsync throws', async () => {
+    await AsyncStorage.setItem(SECURE_KEYS.refreshToken, 'rt-securecopy');
+
+    (SecureStore.getItemAsync as jest.Mock).mockRejectedValueOnce(new Error('Could not decrypt'));
+
+    await expect(loadRefreshToken()).resolves.toBe('rt-securecopy');
+  });
+
+  it('clearRefreshToken removes the AsyncStorage fallback copy too', async () => {
+    await AsyncStorage.setItem(SECURE_KEYS.refreshToken, 'rt-clear');
+
+    (SecureStore.deleteItemAsync as jest.Mock).mockRejectedValueOnce(new Error('broken keystore'));
+
+    await clearAllAuth();
+
+    await expect(AsyncStorage.getItem(SECURE_KEYS.refreshToken)).resolves.toBeNull();
   });
 });
 

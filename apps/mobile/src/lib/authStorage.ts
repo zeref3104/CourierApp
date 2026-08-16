@@ -34,13 +34,27 @@ export const ASYNC_KEYS = {
  * React Native has no HTTP-only cookie jar (design D10), so the refresh token
  * must live outside the JS bundle and survive app restarts in a guard it can
  * read back on boot.
+ *
+ * Resilience: on some Android devices the Keystore key behind SecureStore can
+ * become permanently unusable (stale encrypted entry from a previous install,
+ * or a device Keystore hiccup) and setItemAsync starts throwing
+ * EncryptException/WriteException. Without a fallback that would block login
+ * and registration entirely — the register flow bounces to /login and the
+ * login flow shows a generic error even though the server authenticated the
+ * user. We therefore fall back to AsyncStorage (app-sandboxed, same file
+ * storage family) so the session keeps working; SecureStore stays the
+ * preferred backend and is retried on every write/read.
  */
 export async function saveRefreshToken(token: string): Promise<void> {
   if (isWeb) {
     localStorage.setItem(SECURE_KEYS.refreshToken, token);
     return;
   }
-  await SecureStore.setItemAsync(SECURE_KEYS.refreshToken, token);
+  try {
+    await SecureStore.setItemAsync(SECURE_KEYS.refreshToken, token);
+  } catch {
+    await AsyncStorage.setItem(SECURE_KEYS.refreshToken, token);
+  }
 }
 
 /** Read the stored refresh token, or null when absent/corrupt. */
@@ -48,7 +62,14 @@ export async function loadRefreshToken(): Promise<string | null> {
   if (isWeb) {
     return localStorage.getItem(SECURE_KEYS.refreshToken);
   }
-  return SecureStore.getItemAsync(SECURE_KEYS.refreshToken);
+  try {
+    const secure = await SecureStore.getItemAsync(SECURE_KEYS.refreshToken);
+    if (secure !== null) return secure;
+  } catch {
+    // SecureStore read failed (e.g. undecryptable entry from a previous
+    // install) — fall through to the AsyncStorage fallback copy.
+  }
+  return AsyncStorage.getItem(SECURE_KEYS.refreshToken);
 }
 
 /** Delete the stored refresh token (logout / refresh failure). */
@@ -57,7 +78,13 @@ export async function clearRefreshToken(): Promise<void> {
     localStorage.removeItem(SECURE_KEYS.refreshToken);
     return;
   }
-  await SecureStore.deleteItemAsync(SECURE_KEYS.refreshToken);
+  try {
+    await SecureStore.deleteItemAsync(SECURE_KEYS.refreshToken);
+  } catch {
+    // A broken SecureStore entry must not block the logout wipe; the
+    // AsyncStorage fallback copy below is what keeps the state consistent.
+  }
+  await AsyncStorage.removeItem(SECURE_KEYS.refreshToken);
 }
 
 /**

@@ -38,13 +38,22 @@ export const useAuthStore = create<AuthState>((set) => ({
   status: 'unknown',
 
   /**
-   * Persist a fresh token pair. The refresh token goes to the keychain; the
-   * access token lives only in memory (it is short-lived and refreshed on
-   * demand — never persisted, matching the spec's "access in memory, refresh
-   * in secure storage" split).
+   * Persist a fresh token pair. The refresh token goes to the keychain (with
+   * an AsyncStorage fallback); the access token lives only in memory (it is
+   * short-lived and refreshed on demand — never persisted, matching the
+   * spec's "access in memory, refresh in secure storage" split).
+   *
+   * The in-memory session is ALWAYS set: a storage failure must never strand
+   * a user the server already authenticated (the register flow would bounce
+   * to /login and the login flow would show a generic error). Worst case the
+   * session survives until the access token expires / the app restarts.
    */
   setTokens: async (accessToken, refreshToken) => {
-    await authStorage.saveRefreshToken(refreshToken);
+    try {
+      await authStorage.saveRefreshToken(refreshToken);
+    } catch (err) {
+      console.warn('[auth] failed to persist refresh token; continuing with in-memory session', err);
+    }
     set({ accessToken, refreshToken, status: 'authenticated' });
   },
 
