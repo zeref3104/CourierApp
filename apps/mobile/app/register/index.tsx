@@ -254,7 +254,16 @@ export default function RegisterScreen() {
         otpCode: otpCode.trim(),
         document: document.trim() || undefined,
       });
-      await setTokens(result.accessToken, result.refreshToken);
+      // The account ALREADY exists server-side at this point (201). Token and
+      // tenant persistence are best-effort: a local storage hiccup must NEVER
+      // strand the user on the OTP step with a phantom "registration failed"
+      // (the account exists, retrying would only produce a 409). Persist what
+      // we can, warn on the rest, and always navigate to the dashboard.
+      try {
+        await setTokens(result.accessToken, result.refreshToken);
+      } catch (tokenErr) {
+        console.warn('[register] failed to persist tokens after successful registration', tokenErr);
+      }
       setClient(result.client);
       // Registration knows the selected company's id + slug, so the full tenant
       // context is persisted for x-tenant-slug on later /client/* calls.
