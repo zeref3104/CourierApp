@@ -57,7 +57,7 @@ export default function CustomerFormPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const payload = { ...form, branchId: form.branchId || undefined };
+      const payload = { ...form, document: form.document.trim() || undefined, branchId: form.branchId || undefined };
       if (isEdit) {
         await customerService.update(id!, payload);
       } else {
