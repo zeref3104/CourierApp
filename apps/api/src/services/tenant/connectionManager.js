@@ -66,6 +66,10 @@ class ConnectionManager {
 
     this._loadTenantModels(connection);
 
+    // Self-heal known-bad legacy indexes before the connection is reused.
+    // Best-effort: a failure must never block tenant connection creation.
+    await this._selfHealDeviceTokenIndex(connection);
+
     this.connections.set(tenant.dbName, {
       connection,
       lastUsed: Date.now(),
@@ -126,6 +130,32 @@ class ConnectionManager {
     require('../../models/tenant/ActivityLog')(connection);
     require('../../models/tenant/Setting')(connection);
     require('../../models/tenant/Counter')(connection);
+  }
+
+  /**
+   * Drop a stale UNIQUE index on the embedded `deviceTokens.token` array field
+   * (users collection). A unique multikey index on a field inside an embedded
+   * array indexes a `null` key for every document with an empty deviceTokens
+   * array, so the SECOND user with deviceTokens: [] collides with the first:
+   * 11000 duplicate key -> 409 on /auth/client/register. The schema no longer
+   * declares this index (app-layer dedup handles token uniqueness); any index
+   * still present in an existing tenant DB was created by the old schema and
+   * must be dropped once. Idempotent: no index -> no-op. Best-effort: never
+   * throws, never blocks connection creation.
+   */
+  async _selfHealDeviceTokenIndex(connection) {
+    try {
+      const User = connection.model('User');
+      const indexes = await User.collection.indexes();
+      for (const index of indexes) {
+        if (index.name === 'deviceTokens.token_1' && index.unique) {
+          await User.collection.dropIndex('deviceTokens.token_1');
+          logger.warn(`Self-healed stale unique index deviceTokens.token_1 on users (blocked client registration with 409)`);
+        }
+      }
+    } catch (err) {
+      logger.debug(`Self-heal deviceTokens.token_1 check skipped: ${err.message}`);
+    }
   }
 
   _evictLRU() {
