@@ -4,17 +4,18 @@ const { DEVICE_PLATFORMS, PUSH_TOKEN_PATTERN } = require('@courier/constants');
 
 /**
  * Embedded push device-token records (push-notifications spec, design D11).
- * token is unique across the platform and validated against the Expo push
- * token format; only the android|ios platforms are accepted. `createdAt`
- * marks first registration; `updatedAt` is refreshed when a token is
- * re-registered (idempotent dedup in ClientService).
+ * Token dedup is handled at the APPLICATION layer (ClientService.registerDeviceToken
+ * finds an existing token before pushing). A DB unique index on a field inside an
+ * embedded ARRAY (multikey) is a trap: every document with an empty deviceTokens
+ * array indexes a `null` key, so the second user with deviceTokens: [] collides
+ * with the first (11000 duplicate key -> 409 on /auth/client/register). Only the
+ * android|ios platforms are accepted.
  */
 const deviceTokenSchema = new mongoose.Schema(
   {
     token: {
       type: String,
       required: true,
-      unique: true,
       match: new RegExp(PUSH_TOKEN_PATTERN),
     },
     platform: { type: String, enum: DEVICE_PLATFORMS, required: true },
