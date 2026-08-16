@@ -556,6 +556,14 @@ class AuthService {
     if (!company.clientCodePrefix) {
       throw new NotFoundException('Company is not accepting registrations');
     }
+    // [DIAG] Which company + tenant DB this registration targets. An empty
+    // databaseName here would explain 409 collisions against a shared DB.
+    logger.info('[AUTH] registerClient: company resolved', {
+      companyId: String(company._id),
+      slug: company.slug,
+      databaseName: company.databaseName,
+      clientCodePrefix: company.clientCodePrefix,
+    });
     const license = await License.findOne({
       companyId: company._id,
       status: { $in: ['active', 'trial'] },
@@ -569,6 +577,13 @@ class AuthService {
       slug: company.slug,
       dbName: company.databaseName,
       plan: company.planId,
+    });
+    // [DIAG] The ACTUAL database the tenant connection points to. If this
+    // differs from company.databaseName (e.g. 'undefined' or a shared name),
+    // every uniqueness check runs against the wrong collection.
+    logger.info('[AUTH] registerClient: tenant connection', {
+      requestedDb: company.databaseName,
+      actualDb: tenantConnection.name,
     });
     const models = {
       Customer: tenantConnection.model('Customer'),
@@ -617,7 +632,22 @@ class AuthService {
       models.Customer.findOne({ email: normalizedEmail }),
       models.User.findOne({ email: normalizedEmail }),
     ]);
+    // [DIAG] Which DB was actually queried for the uniqueness check and what it
+    // found. An existingCustomer/existingUser for a brand-new email means the
+    // wrong collection/db is being searched (or a phantom record exists).
+    logger.info('[AUTH] registerClient: email uniqueness check', {
+      email: normalizedEmail,
+      modelDb: models.Customer.db.name,
+      existingCustomer: existingCustomer ? String(existingCustomer._id) : null,
+      existingUser: existingUser ? String(existingUser._id) : null,
+    });
     if (existingCustomer || existingUser) {
+      logger.warn('[AUTH] registerClient: 409 email already registered', {
+        email: normalizedEmail,
+        modelDb: models.Customer.db.name,
+        existingCustomer: existingCustomer ? String(existingCustomer._id) : null,
+        existingUser: existingUser ? String(existingUser._id) : null,
+      });
       throw new ConflictException('Email already registered in this company');
     }
 
