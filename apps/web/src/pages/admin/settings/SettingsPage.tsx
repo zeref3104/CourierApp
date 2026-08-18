@@ -82,8 +82,10 @@ export default function SettingsPage() {
     try {
       const { default: api } = await import('../../../config/axios');
       await api.patch('/settings', { language: lang });
-    } catch {
-      // The language still applies locally; backend sync is best-effort.
+    } catch (err) {
+      // The language still applies locally, but the backend was NOT updated —
+      // surface it instead of swallowing, or customer emails keep the old language.
+      console.error('[settings] Failed to persist tenant language on the server:', err);
     }
   };
 

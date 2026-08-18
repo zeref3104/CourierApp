@@ -6,18 +6,28 @@ const socketHandler = require('./socketHandler');
 
 // Settings cache for email-send reads. Mirrors PackageService._getSetting so
 // the per-tenant `language` Setting is read once per TTL instead of per email.
+// NOTE: this cache is SEPARATE from PackageService.settingsCache — setting
+// changes must invalidate BOTH (SettingService calls invalidateSettingsCache).
 const settingsCache = new Map();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const SUPPORTED_LANGUAGES = ['es', 'en', 'fr'];
+// Deployment default when the Setting is missing or unreadable. Set
+// DEFAULT_LANGUAGE=fr in the API env for French-first tenants. Any value
+// outside the supported set falls back to 'es'.
+const DEFAULT_LANGUAGE = SUPPORTED_LANGUAGES.includes(process.env.DEFAULT_LANGUAGE)
+  ? process.env.DEFAULT_LANGUAGE
+  : 'es';
 
-async function getSetting(models, key, defaultValue) {
-  const cacheKey = `${models.Setting.db.name}:${key}`;
+async function getSetting(Setting, key, defaultValue) {
+  // `Setting` here is the model returned by pkg.model('Setting') — the cache
+  // key must read Setting.db.name directly (NOT Setting.Setting.db.name).
+  const cacheKey = `${Setting.db.name}:${key}`;
   const cached = settingsCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return cached.value;
   }
 
-  const setting = await models.Setting.findOne({ key });
+  const setting = await Setting.findOne({ key });
   const value = setting ? setting.value : defaultValue;
 
   settingsCache.set(cacheKey, { value, timestamp: Date.now() });
@@ -25,15 +35,42 @@ async function getSetting(models, key, defaultValue) {
 }
 
 /**
- * Resolve the tenant language for customer emails (defaults to Spanish).
- * Email sending is best-effort, so any read error falls back to 'es'.
+ * Invalidate this tenant's cached setting value(s). Called by
+ * SettingService.update after a setting changes so emails and pushes pick up
+ * the new value immediately instead of waiting out the TTL. Mirrors
+ * PackageService.invalidateCache; both caches must be cleared.
+ */
+function invalidateSettingsCache(dbName, key) {
+  const prefix = dbName ? `${dbName}:` : '';
+  if (key) {
+    settingsCache.delete(prefix + key);
+  } else if (dbName) {
+    for (const k of settingsCache.keys()) {
+      if (k.startsWith(prefix)) settingsCache.delete(k);
+    }
+  } else {
+    settingsCache.clear();
+  }
+}
+
+/**
+ * Resolve the tenant language for customer emails/pushes. Falls back to the
+ * deployment default (DEFAULT_LANGUAGE env, 'es' unless overridden) when the
+ * Setting model is unavailable on the package connection, the read fails, or
+ * the stored value is not a supported language. Best-effort: never throws.
  */
 async function getTenantLanguage(pkg) {
   try {
-    const lang = await getSetting(pkg.model('Setting'), 'language', 'es');
-    return SUPPORTED_LANGUAGES.includes(lang) ? lang : 'es';
-  } catch {
-    return 'es';
+    const Setting = typeof pkg?.model === 'function' ? pkg.model('Setting') : null;
+    if (!Setting) {
+      logger.warn(`getTenantLanguage: Setting model unavailable; using default ${DEFAULT_LANGUAGE}`);
+      return DEFAULT_LANGUAGE;
+    }
+    const lang = await getSetting(Setting, 'language', DEFAULT_LANGUAGE);
+    return SUPPORTED_LANGUAGES.includes(lang) ? lang : DEFAULT_LANGUAGE;
+  } catch (err) {
+    logger.warn(`getTenantLanguage: read failed (${String(err?.message || err)}); using default ${DEFAULT_LANGUAGE}`);
+    return DEFAULT_LANGUAGE;
   }
 }
 
@@ -309,4 +346,5 @@ const notificationHandler = {
   },
 };
 
+notificationHandler.invalidateSettingsCache = invalidateSettingsCache;
 module.exports = notificationHandler;

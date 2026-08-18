@@ -3,6 +3,10 @@ const emailService = require('./notifications/email.service');
 const TooManyRequestsException = require('../exceptions/TooManyRequestsException');
 const UnprocessableEntityException = require('../exceptions/UnprocessableEntityException');
 
+// Deployment default language when the client does not request one. Set
+// DEFAULT_LANGUAGE=fr in the API env for French-first tenants.
+const DEFAULT_LANGUAGE = process.env.DEFAULT_LANGUAGE || 'es';
+
 /**
  * Registration OTP service (client-registration spec + auth-specs delta §2.2,
  * design D5). Codes live on the MASTER DB keyed `${email}:${purpose}`; only the
@@ -72,7 +76,7 @@ class OtpService {
 
     // Email is best-effort (sendNotification never throws); the stored code
     // remains valid and the 60s cooldown still applies on failure.
-    await emailService.sendOtpCode(email, code, lang || 'es');
+    await emailService.sendOtpCode(email, code, lang || DEFAULT_LANGUAGE);
 
     return { sent: true, resendAfter: OTP_COOLDOWN_MS / 1000 };
   }

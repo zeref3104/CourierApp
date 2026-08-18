@@ -1,5 +1,6 @@
 const NotFoundException = require('../../exceptions/NotFoundException');
 const PackageService = require('../packages/package.service');
+const { invalidateSettingsCache } = require('../../events/handlers/notificationHandler');
 
 class SettingService {
   async findAll(models) {
@@ -19,6 +20,9 @@ class SettingService {
       );
       // Invalidate this tenant's cache entry for the setting key
       PackageService.invalidateCache(models.Setting.db.name, key);
+      // Also clear the notificationHandler cache (separate Map) so emails and
+      // pushes pick up the new setting immediately (language, etc.).
+      invalidateSettingsCache(models.Setting.db.name, key);
     });
     await Promise.all(promises);
     return this.findAll(models);

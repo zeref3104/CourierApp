@@ -2,6 +2,10 @@ const nodemailer = require('nodemailer');
 const logger = require('../../logs/logger');
 const { emailTemplates, interpolate } = require('./emailTemplates');
 
+// Deployment default language when no explicit lang is passed. Set
+// DEFAULT_LANGUAGE=fr in the API env for French-first tenants.
+const DEFAULT_LANGUAGE = process.env.DEFAULT_LANGUAGE || 'es';
+
 /**
  * Email notification service.
  * Uses nodemailer with configurable transport (SMTP by default).
@@ -73,7 +77,7 @@ class EmailService {
   /**
    * Send package status update notification.
    */
-  async sendPackageStatusNotification(email, tracking, status, customerName, lang = 'es') {
+  async sendPackageStatusNotification(email, tracking, status, customerName, lang = DEFAULT_LANGUAGE) {
     const templates = emailTemplates[lang] || emailTemplates.es;
     const label = templates.statusLabels[status] || status;
 
@@ -91,7 +95,7 @@ class EmailService {
    * Send a registration OTP verification code.
    * Template is per-language (es/en/fr, es default per design D6).
    */
-  async sendOtpCode(email, code, lang = 'es') {
+  async sendOtpCode(email, code, lang = DEFAULT_LANGUAGE) {
     const templates = emailTemplates[lang] || emailTemplates.es;
 
     const subject = templates.otp.subject;
@@ -103,7 +107,7 @@ class EmailService {
   /**
    * Send delivery completion notification.
    */
-  async sendDeliveryNotification(email, tracking, receiverName, customerName, lang = 'es') {
+  async sendDeliveryNotification(email, tracking, receiverName, customerName, lang = DEFAULT_LANGUAGE) {
     const templates = emailTemplates[lang] || emailTemplates.es;
 
     const subject = interpolate(templates.deliveryCompleted.subject, { tracking });
