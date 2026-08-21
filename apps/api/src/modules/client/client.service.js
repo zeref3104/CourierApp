@@ -42,7 +42,9 @@ class ClientService {
       page: Number(page),
       limit: Number(limit),
       sort: { createdAt: -1 },
-      select: 'tracking carrierTracking description weight status cost total createdAt deliveredAt photos',
+      // No amount fields (cost/total/shippingCost/tax) in the client list —
+      // amounts are disclosed per-package only when status is `disponible`.
+      select: 'tracking carrierTracking description weight status createdAt deliveredAt photos',
     });
   }
 
@@ -69,6 +71,9 @@ class ClientService {
       result.pickupBranch = branch
         ? { id: branch._id, name: branch.name, address: branch.address }
         : null;
+      // Tenant currency so clients format the disclosed amount correctly.
+      const currencySetting = await this.models.Setting.findOne({ key: 'currency' });
+      result.currency = currencySetting ? currencySetting.value : 'DOP';
     } else {
       for (const field of ['total', 'cost', 'shippingCost', 'tax', 'declaredValue']) {
         delete result[field];

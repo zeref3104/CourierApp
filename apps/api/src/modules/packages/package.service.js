@@ -40,7 +40,7 @@ class PackageService {
 
     const pricePerLb = await this._getSetting('price_per_lb', 0);
     const minimumPrice = await this._getSetting('minimum_price', 0);
-    const taxRate = await this._getSetting('tax_rate', 18);
+    const taxRate = await this._getSetting('tax_rate', 0);
 
     const { baseCost, tax, total } = calculatePricing(data.weight, pricePerLb, minimumPrice, taxRate);
 
@@ -146,7 +146,7 @@ class PackageService {
     if (data.weight && data.weight !== pkg.weight) {
       const pricePerLb = await this._getSetting('price_per_lb', 0);
       const minimumPrice = await this._getSetting('minimum_price', 0);
-      const taxRate = await this._getSetting('tax_rate', 18);
+      const taxRate = await this._getSetting('tax_rate', 0);
 
       const { baseCost, tax, total } = calculatePricing(data.weight, pricePerLb, minimumPrice, taxRate);
       data.cost = baseCost;

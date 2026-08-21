@@ -118,7 +118,7 @@ class PaymentService {
    * _afterCommit so the fallback path behaves identically.
    */
   async _runTransactional(session, data, userId, userBranchId) {
-    const { packages, customer, receiptItems, subtotal, tax, totalAmount } =
+    const { packages, customer, receiptItems, subtotal, tax, totalAmount, currency } =
       await this._loadPaymentInputs(data, session);
 
     // Generate the receipt number INSIDE the transaction so concurrent
@@ -158,7 +158,7 @@ class PaymentService {
 
     await session.commitTransaction();
 
-    return this._afterCommit({ payment: payment[0], customer, packages, receiptItems, subtotal, tax, totalAmount, userId });
+    return this._afterCommit({ payment: payment[0], customer, packages, receiptItems, subtotal, tax, totalAmount, currency, userId });
   }
 
   /**

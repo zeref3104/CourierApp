@@ -140,7 +140,7 @@ export default function SettingsPage() {
             max="100"
             value={form.tax_rate}
             onChange={(e) => setForm({ ...form, tax_rate: e.target.value })}
-            placeholder="18"
+            placeholder="0"
           />
 
           <div className="flex gap-3 pt-4">

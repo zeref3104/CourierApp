@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { fetchPackageByTracking, PackageDetail } from '@/api/clientPanel';
-import { sortTimelineChronological, shouldShowAmountCard, pickupBranchOf } from '@/lib/tracking';
+import { sortTimelineChronological, shouldShowAmountCard, pickupBranchOf, formatCurrency } from '@/lib/tracking';
 import { t } from '@/i18n';
 
 /**
@@ -69,7 +69,7 @@ export default function TrackingDetailScreen() {
       {showAmountCard ? (
         <View style={styles.amountCard}>
           <Text style={styles.amountLabel}>{t('tracking.amountToPay')}</Text>
-          <Text style={styles.amountValue}>${Number(pkg.amountToPay).toFixed(2)}</Text>
+          <Text style={styles.amountValue}>{formatCurrency(Number(pkg.amountToPay), pkg.currency)}</Text>
           {pickupBranch ? (
             <>
               <Text style={styles.branchTitle}>{t('tracking.pickupBranch')}</Text>

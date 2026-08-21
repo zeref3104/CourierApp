@@ -2,6 +2,7 @@ import {
   sortTimelineChronological,
   shouldShowAmountCard,
   pickupBranchOf,
+  formatCurrency,
 } from '@/lib/tracking';
 import { PackageDetail, PackageHistoryEntry } from '@/api/clientPanel';
 
@@ -91,5 +92,23 @@ describe('pickupBranchOf', () => {
 
   it('returns null when neither branch is present', () => {
     expect(pickupBranchOf(pkg({ pickupBranch: null, branchId: null }))).toBeNull();
+  });
+});
+
+describe('formatCurrency', () => {
+  it('formats with the tenant currency from the API response', () => {
+    expect(formatCurrency(45.5, 'USD')).toBe(new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(45.5));
+    expect(formatCurrency(45.5, 'USD')).toContain('45.50');
+  });
+
+  it('formats DOP amounts with the currency symbol/code, never a bare "$"', () => {
+    const formatted = formatCurrency(1234.5, 'DOP');
+    expect(formatted).toContain('1,234.50');
+    // DOP must be distinguishable from USD (RD$ / DOP marker present)
+    expect(formatted).toMatch(/RD\$|DOP/);
+  });
+
+  it('falls back to DOP when the response omits the currency', () => {
+    expect(formatCurrency(10, undefined)).toBe(formatCurrency(10, 'DOP'));
   });
 });

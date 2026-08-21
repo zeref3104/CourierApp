@@ -127,7 +127,7 @@ class CompanyService {
       { key: 'company_email', value: data.adminEmail },
       { key: 'price_per_lb', value: 0 },
       { key: 'minimum_price', value: 0 },
-      { key: 'tax_rate', value: 18 },
+      { key: 'tax_rate', value: 0 },
       { key: 'currency', value: 'DOP' },
       { key: 'language', value: 'es' },
     ]);

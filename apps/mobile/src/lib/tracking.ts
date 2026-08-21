@@ -28,3 +28,15 @@ export function shouldShowAmountCard(
 export function pickupBranchOf(pkg: PackageDetail): PickupBranch | { name: string; address?: string } | null {
   return pkg.pickupBranch ?? pkg.branchId ?? null;
 }
+
+/**
+ * Format a disclosed amount with the tenant currency (from the API response).
+ * Falls back to 'DOP' when the backend omits it.
+ */
+export function formatCurrency(amount: number, currency?: string): string {
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: currency || 'DOP',
+    minimumFractionDigits: 2,
+  }).format(amount);
+}

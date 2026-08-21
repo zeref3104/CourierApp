@@ -91,10 +91,11 @@ function generateCustomerCode(seq) {
  * @param {number} weight - Package weight in lbs
  * @param {number} pricePerLb - Price per pound
  * @param {number} minimumPrice - Minimum price
- * @param {number} taxRate - Tax rate percentage
+ * @param {number} taxRate - Tax rate percentage (default 0 — the tenant
+ *   `tax_rate` setting is the source of truth; 0 is the last-resort fallback)
  * @returns {{ baseCost: number, tax: number, total: number }}
  */
-function calculatePricing(weight, pricePerLb, minimumPrice = 0, taxRate = 18) {
+function calculatePricing(weight, pricePerLb, minimumPrice = 0, taxRate = 0) {
   let baseCost = weight * Number(pricePerLb);
   if (baseCost < Number(minimumPrice)) baseCost = Number(minimumPrice);
   const tax = baseCost * (Number(taxRate) / 100);

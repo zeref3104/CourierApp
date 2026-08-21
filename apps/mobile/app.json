@@ -9,7 +9,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.courier.mobile",
+      "bundleIdentifier": "com.charmeurexpress.courier",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
@@ -17,13 +17,15 @@
       }
     },
     "android": {
-      "package": "com.courier.mobile"
+      "package": "com.charmeurexpress.courier",
+      "versionCode": 1
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
       "expo-notifications",
-      "expo-localization"
+      "expo-localization",
+      "./plugins/withRemovedSystemAlertWindow.js"
     ],
     "experiments": {
       "typedRoutes": true

@@ -22,11 +22,15 @@ function historyQuery(history) {
   };
 }
 
-function makeModels({ pkgDoc, history = [{ status: 'disponible', createdAt: new Date() }] } = {}) {
+function makeModels({ pkgDoc, history = [{ status: 'disponible', createdAt: new Date() }], currency = 'USD' } = {}) {
   const models = {
     Package: { findOne: jest.fn().mockReturnValue(packageQuery(pkgDoc)) },
     PackageHistory: { find: jest.fn().mockReturnValue(historyQuery(history)) },
     Notification: {},
+    // getPackageByTracking reads the tenant `currency` setting for disponible packages
+    Setting: {
+      findOne: jest.fn().mockResolvedValue(currency ? { key: 'currency', value: currency } : null),
+    },
   };
 
   // getNotifications runs through BaseRepository.findAll -> find().countDocuments()
@@ -73,8 +77,19 @@ describe('ClientService.getPackageByTracking (amountToPay gating)', () => {
       name: 'Main Branch',
       address: 'Av. Principal 123',
     });
+    // tenant currency is disclosed alongside the amount
+    expect(result.currency).toBe('USD');
     // history timeline still attached
     expect(result.history).toHaveLength(1);
+  });
+
+  test('disponible: currency falls back to DOP when the setting is missing', async () => {
+    const pkg = disponiblePackage();
+    const service = new ClientService(makeModels({ pkgDoc: pkg, currency: null }));
+
+    const result = await service.getPackageByTracking('CPR-20260101-0001', 'customer-1');
+
+    expect(result.currency).toBe('DOP');
   });
 
   test('en_reparto: exposes NO amount-to-pay and no pickup branch', async () => {
@@ -88,6 +103,8 @@ describe('ClientService.getPackageByTracking (amountToPay gating)', () => {
     // the raw amount fields must not leak for non-disponible packages
     expect('total' in result).toBe(false);
     expect('cost' in result).toBe(false);
+    // currency travels with the amount disclosure — absent when no amount is
+    expect('currency' in result).toBe(false);
   });
 
   test('disponible package is found by tracking scoped to the customer', async () => {

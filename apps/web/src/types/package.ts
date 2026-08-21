@@ -32,3 +32,23 @@ export interface PackageHistory {
   notes?: string;
   createdAt: string;
 }
+
+/**
+ * Client-panel package detail (GET /client/packages/:tracking).
+ * `amountToPay`, `pickupBranch` and `currency` are present ONLY when
+ * status === 'disponible'; for any other status the backend strips the
+ * amount-bearing fields and no price section must be rendered.
+ */
+export interface ClientPackageDetail {
+  _id: string;
+  tracking: string;
+  status: string;
+  description?: string;
+  weight?: number;
+  createdAt: string;
+  deliveredAt?: string | null;
+  history?: PackageHistory[];
+  amountToPay?: number;
+  currency?: string;
+  pickupBranch?: { id?: string; name: string; address?: string } | null;
+}

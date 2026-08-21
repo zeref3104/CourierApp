@@ -26,8 +26,6 @@ export interface PackageSummary {
   description?: string;
   weight?: number;
   status: string;
-  cost?: number;
-  total?: number;
   createdAt: string;
   deliveredAt?: string | null;
   photos?: string[];
@@ -56,8 +54,8 @@ export interface PickupBranch {
 }
 
 /**
- * Package detail. `amountToPay` + `pickupBranch` are present ONLY when
- * status === 'disponible'; for any other status the backend strips the
+ * Package detail. `amountToPay` + `pickupBranch` + `currency` are present ONLY
+ * when status === 'disponible'; for any other status the backend strips the
  * amount-bearing fields and we must NOT render an amount card.
  */
 export interface PackageDetail {
@@ -70,6 +68,7 @@ export interface PackageDetail {
   deliveredAt?: string | null;
   branchId?: { _id: string; name: string; address?: string } | null;
   amountToPay?: number;
+  currency?: string;
   pickupBranch?: PickupBranch | null;
   history: PackageHistoryEntry[];
   [key: string]: unknown;
