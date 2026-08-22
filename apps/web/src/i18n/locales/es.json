@@ -89,6 +89,8 @@
   "auth.confirmNewPasswordPlaceholder": "Repite la nueva contraseña",
   "auth.changePasswordButton": "Cambiar contraseña",
   "auth.changePasswordError": "Error al cambiar la contraseña",
+  "auth.invalidCredentials": "Correo o contraseña inválidos",
+  "auth.clientMultipleCompanies": "Este correo está vinculado a varias empresas. Inicia sesión con tu código de cliente.",
   "clientLogin.title": "Inicio de sesión de cliente",
   "clientLogin.subtitle": "Inicia sesión con tu código de cliente",
   "clientLogin.code": "Código de cliente",

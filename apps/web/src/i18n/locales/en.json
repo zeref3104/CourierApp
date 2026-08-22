@@ -89,6 +89,8 @@
   "auth.confirmNewPasswordPlaceholder": "Repeat the new password",
   "auth.changePasswordButton": "Change password",
   "auth.changePasswordError": "Error changing password",
+  "auth.invalidCredentials": "Invalid email or password",
+  "auth.clientMultipleCompanies": "This email is linked to multiple companies. Sign in with your client code instead.",
   "clientLogin.title": "Client login",
   "clientLogin.subtitle": "Sign in with your client code",
   "clientLogin.code": "Client code",

@@ -89,6 +89,8 @@
   "auth.confirmNewPasswordPlaceholder": "Répétez le nouveau mot de passe",
   "auth.changePasswordButton": "Changer le mot de passe",
   "auth.changePasswordError": "Erreur lors du changement du mot de passe",
+  "auth.invalidCredentials": "E-mail ou mot de passe invalide",
+  "auth.clientMultipleCompanies": "Cet e-mail est lié à plusieurs entreprises. Connectez-vous avec votre code client.",
   "clientLogin.title": "Connexion client",
   "clientLogin.subtitle": "Connectez-vous avec votre code client",
   "clientLogin.code": "Code client",

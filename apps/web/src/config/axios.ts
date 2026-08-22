@@ -1,6 +1,11 @@
 import axios from 'axios';
 import { store } from '../store';
 import { setAccessToken, logout } from '../store/slices/authSlice';
+import {
+  clearClientRefreshToken,
+  loadClientRefreshToken,
+  saveClientRefreshToken,
+} from '../utils/clientAuthStorage';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'https://api.charmeurexpress.us/api/v1',
@@ -48,18 +53,36 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post(
-          `${api.defaults.baseURL}/auth/refresh`,
-          {},
-          { withCredentials: true }
-        );
-        const newToken = data.data.accessToken;
+        // Client sessions have no refresh cookie — they rotate via
+        // POST /auth/client/refresh with the token in the body (same
+        // contract the mobile app uses). Staff keeps the cookie flow.
+        const clientRefreshToken = store.getState().auth.user?.isClient
+          ? loadClientRefreshToken()
+          : null;
+
+        let newToken: string;
+        if (clientRefreshToken) {
+          const { data } = await axios.post(`${api.defaults.baseURL}/auth/client/refresh`, {
+            refreshToken: clientRefreshToken,
+          });
+          newToken = data.data.accessToken;
+          saveClientRefreshToken(data.data.refreshToken);
+        } else {
+          const { data } = await axios.post(
+            `${api.defaults.baseURL}/auth/refresh`,
+            {},
+            { withCredentials: true }
+          );
+          newToken = data.data.accessToken;
+        }
+
         store.dispatch(setAccessToken(newToken));
         processQueue(null, newToken);
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
+        clearClientRefreshToken();
         store.dispatch(logout());
         window.location.href = '/login';
         return Promise.reject(refreshError);

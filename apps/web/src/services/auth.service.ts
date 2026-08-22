@@ -1,13 +1,13 @@
 import api from '../config/axios';
 import type { ApiResponse } from '../types/api';
-import type { LoginRequest, LoginResponse } from '../types/auth';
+import type { ClientLoginResponse, LoginRequest, LoginResponse } from '../types/auth';
 
 export const authService = {
   login: (data: LoginRequest) =>
     api.post<ApiResponse<LoginResponse>>('/auth/login', data).then((r) => r.data),
 
   clientLogin: (data: LoginRequest) =>
-    api.post<ApiResponse<LoginResponse>>('/auth/client/login', data).then((r) => r.data),
+    api.post<ApiResponse<ClientLoginResponse>>('/auth/client/login', data).then((r) => r.data),
 
   refresh: () =>
     api.post<ApiResponse<{ accessToken: string }>>('/auth/refresh').then((r) => r.data),

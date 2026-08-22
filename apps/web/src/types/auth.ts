@@ -9,6 +9,25 @@ export interface LoginResponse {
   user: UserProfile;
 }
 
+/**
+ * POST /auth/client/login response — tokens travel in the BODY (no HTTP-only
+ * cookie) because this endpoint also serves the mobile app.
+ */
+export interface ClientLoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  client: {
+    id: string;
+    code: string;
+    name: string;
+    company: {
+      slug: string;
+      name: string;
+      prefix: string;
+    };
+  };
+}
+
 export interface UserProfile {
   id: string;
   name: string;

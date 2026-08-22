@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { authService } from '../../services/auth.service';
 import { setCredentials } from '../../store/slices/authSlice';
+import { clearClientRefreshToken, saveClientRefreshToken } from '../../utils/clientAuthStorage';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
@@ -19,6 +20,22 @@ const loginSchema = (t: TFunction) =>
     email: z.string().email(t('auth.emailInvalid')),
     password: z.string().min(1, t('auth.passwordRequired')),
   });
+
+/**
+ * /auth/login resolves the tenant from the master-DB TenantUserIndex, which
+ * only holds staff emails. When the email is unknown there the API answers
+ * 404 TENANT_NOT_FOUND — that exact failure is the signal to retry as a
+ * client (ClientEmailIndex) via /auth/client/login. Other 404s (unknown
+ * tenant slug, expired license) must NOT fall back, hence the message match.
+ */
+const isTenantResolutionError = (err: any) => {
+  const message = err.response?.data?.error?.message;
+  return (
+    err.response?.status === 404 &&
+    typeof message === 'string' &&
+    message.includes('Tenant slug required')
+  );
+};
 
 export default function LoginPage() {
   const [error, setError] = useState('');
@@ -35,14 +52,52 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const response = await authService.login(data);
-      dispatch(setCredentials(response.data));
-      if (response.data.user?.isClient) {
+      try {
+        const response = await authService.login(data);
+        // A staff session must not inherit a stale client refresh token.
+        clearClientRefreshToken();
+        dispatch(setCredentials(response.data));
+        if (response.data.user?.isClient) {
+          navigate('/client');
+        } else if (response.data.mustChangePassword) {
+          navigate('/auth/change-password');
+        } else {
+          navigate('/');
+        }
+        return;
+      } catch (err: any) {
+        if (!isTenantResolutionError(err)) throw err;
+        // Email not in the staff index — fall through to the client login.
+      }
+
+      try {
+        const response = await authService.clientLogin(data);
+        const { accessToken, refreshToken, client } = response.data;
+        saveClientRefreshToken(refreshToken);
+        dispatch(
+          setCredentials({
+            accessToken,
+            user: {
+              id: client.id,
+              name: client.name,
+              email: data.email,
+              role: 'client',
+              roleName: client.code,
+              permissions: [],
+              isClient: true,
+              clientId: client.id,
+            },
+          })
+        );
         navigate('/client');
-      } else if (response.data.mustChangePassword) {
-        navigate('/auth/change-password');
-      } else {
-        navigate('/');
+      } catch (clientErr: any) {
+        if (clientErr.response?.status === 409) {
+          setError(t('auth.clientMultipleCompanies'));
+        } else {
+          // 404/401/423 — same message as any failed login, without
+          // leaking which endpoint rejected the credentials.
+          setError(t('auth.invalidCredentials'));
+        }
       }
     } catch (err: any) {
       setError(err.response?.data?.error?.message || t('auth.loginError'));

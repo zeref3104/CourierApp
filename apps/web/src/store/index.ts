@@ -4,6 +4,7 @@ import uiReducer from './slices/uiSlice';
 import packageReducer from './slices/packageSlice';
 import customerReducer from './slices/customerSlice';
 import notificationReducer from './slices/notificationSlice';
+import { clearClientRefreshToken } from '../utils/clientAuthStorage';
 
 // Load persisted auth from localStorage
 function loadPersistedAuth() {
@@ -54,6 +55,9 @@ store.subscribe(() => {
     }
   } else {
     localStorage.removeItem('auth');
+    // Every logout path (Navbar, ClientLayout, axios refresh failure) funnels
+    // through this subscriber, so the client refresh token is wiped here.
+    clearClientRefreshToken();
     previousAuth = null;
   }
 });
