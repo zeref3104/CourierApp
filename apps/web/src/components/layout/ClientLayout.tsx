@@ -52,7 +52,7 @@ export default function ClientLayout() {
             >
               {navOpen ? '✕' : '☰'}
             </button>
-            <div className={navOpen ? 'fixed inset-0 z-40 md:static md:inset-auto md:z-auto bg-white dark:bg-gray-800 md:bg-transparent md:flex md:flex-row flex-col md:items-center md:gap-4 p-6 md:p-0 transition-all duration-300' : 'hidden'}>
+            <div className={`${navOpen ? 'fixed inset-0 z-40 bg-white dark:bg-gray-800 flex flex-col p-6 transition-all duration-300' : 'hidden'} md:static md:inset-auto md:z-auto md:bg-transparent md:flex md:flex-row md:items-center md:gap-4 md:p-0`}>
               <Link to="/client" className="text-gray-600 dark:text-gray-300 hover:text-primary-600 py-2 md:py-0 block md:inline" onClick={() => setNavOpen(false)}>{t('nav.dashboard')}</Link>
               <Link to="/client/packages" className="text-gray-600 dark:text-gray-300 hover:text-primary-600 py-2 md:py-0 block md:inline" onClick={() => setNavOpen(false)}>{t('nav.myPackages')}</Link>
               {/* Client info — mobile only */}
