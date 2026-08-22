@@ -52,6 +52,7 @@
   "common.yes": "Oui",
   "common.no": "Non",
   "common.viewDetails": "Voir les détails",
+  "common.viewAll": "Voir tout",
   "common.loadDataError": "Erreur lors du chargement des données",
   "common.package": "Colis",
   "common.packages": "Colis",

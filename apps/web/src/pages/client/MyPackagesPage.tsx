@@ -15,10 +15,7 @@ export default function MyPackagesPage() {
 
   const load = useCallback(async () => {
     const api = (await import('../../config/axios')).default;
-    api.get('/client/packages').then((r) => {
-      console.log('[DEBUG-PKG] API response:', JSON.stringify(r.data, null, 2));
-      setPackages(r.data.data || []);
-    });
+    api.get('/client/packages').then((r) => setPackages(r.data.data || []));
   }, []);
 
   useEffect(() => {
@@ -37,10 +34,7 @@ export default function MyPackagesPage() {
           renderRow={(p) => (
             <div
               className="flex flex-col gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-4 px-4 py-2 rounded-lg transition-colors"
-              onClick={() => {
-                console.log('[DEBUG-PKG] Click on package:', p.tracking, p._id);
-                navigate(`/client/packages/${p.tracking}`);
-              }}
+              onClick={() => navigate(`/client/packages/${p.tracking}`)}
             >
               <div className="flex justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400">{t('packages.tracking')}</span>

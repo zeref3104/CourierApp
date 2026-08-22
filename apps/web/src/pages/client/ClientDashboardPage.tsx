@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { clientService } from '../../services/client.service';
 import { Card, StatCard } from '../../components/ui/Card';
@@ -55,24 +56,29 @@ export default function ClientDashboardPage() {
       {!error && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label={t('client.inTransit')} value={data?.inTransit || 0} />
-            <StatCard label={t('client.available')} value={data?.readyForPickup || 0} />
-            <StatCard label={t('client.delivered')} value={data?.delivered || 0} />
-            <StatCard label={t('client.total')} value={data?.totalPackages || 0} />
+            <Link to="/client/packages" className="block"><StatCard label={t('client.inTransit')} value={data?.inTransit || 0} /></Link>
+            <Link to="/client/packages" className="block"><StatCard label={t('client.available')} value={data?.readyForPickup || 0} /></Link>
+            <Link to="/client/packages" className="block"><StatCard label={t('client.delivered')} value={data?.delivered || 0} /></Link>
+            <Link to="/client/packages" className="block"><StatCard label={t('client.total')} value={data?.totalPackages || 0} /></Link>
           </div>
 
           <Card>
-            <h2 className="text-lg font-semibold mb-4">{t('client.recentPackages')}</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">{t('client.recentPackages')}</h2>
+              <Link to="/client/packages" className="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                {t('common.viewAll')} →
+              </Link>
+            </div>
             {data?.lastTracking?.length > 0 ? (
               <div className="space-y-3">
                 {data.lastTracking.map((p: any) => (
-                  <div key={p.tracking} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                  <Link key={p.tracking} to={`/client/packages/${p.tracking}`} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800 -mx-2 px-2 rounded-lg transition-colors">
                     <div>
                       <p className="text-sm font-medium font-mono">{p.tracking}</p>
                       <p className="text-xs text-gray-500">{formatRelative(p.createdAt)}</p>
                     </div>
                     <StatusBadge status={p.status} />
-                  </div>
+                  </Link>
                 ))}
               </div>
             ) : (

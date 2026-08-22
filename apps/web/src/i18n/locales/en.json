@@ -52,6 +52,7 @@
   "common.yes": "Yes",
   "common.no": "No",
   "common.viewDetails": "View details",
+  "common.viewAll": "View all",
   "common.loadDataError": "Error loading data",
   "common.package": "Package",
   "common.packages": "Packages",
