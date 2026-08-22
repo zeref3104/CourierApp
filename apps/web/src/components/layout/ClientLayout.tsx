@@ -64,7 +64,7 @@ export default function ClientLayout() {
               )}
               <button
                 onClick={handleLogout}
-                className="text-sm text-left text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 py-2 md:py-0 block md:inline font-medium"
+                className="text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-1.5 rounded-lg font-medium transition-colors"
               >
                 {t('nav.logout')}
               </button>
