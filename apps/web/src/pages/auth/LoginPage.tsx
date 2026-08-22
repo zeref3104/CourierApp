@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -140,6 +140,13 @@ export default function LoginPage() {
           {t('nav.login')}
         </Button>
       </form>
+
+      <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
+        {t('auth.noAccount')}{' '}
+        <Link to="/auth/register" className="text-primary-600 hover:underline">
+          {t('auth.register')}
+        </Link>
+      </p>
     </div>
   );
 }

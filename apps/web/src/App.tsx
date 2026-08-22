@@ -12,6 +12,7 @@ import ClientLayout from './components/layout/ClientLayout';
 // Pages
 import LoginPage from './pages/auth/LoginPage';
 import ChangePasswordPage from './pages/auth/ChangePasswordPage';
+import RegisterPage from './pages/auth/RegisterPage';
 import DashboardPage from './pages/admin/DashboardPage';
 import CompaniesPage from './pages/admin/companies/CompaniesPage';
 import CreateCompanyPage from './pages/admin/companies/CreateCompanyPage';
@@ -66,6 +67,7 @@ function App() {
       {/* Auth */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/auth/register" element={<RegisterPage />} />
         <Route path="/auth/change-password" element={<ChangePasswordPage />} />
       </Route>
 

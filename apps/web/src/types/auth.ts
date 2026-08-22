@@ -28,6 +28,29 @@ export interface ClientLoginResponse {
   };
 }
 
+export interface PublicCompany {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface PublicBranch {
+  id: string;
+  name: string;
+}
+
+export interface RegisterClientRequest {
+  companyId: string;
+  branchId?: string;
+  name: string;
+  lastName: string;
+  phone: string;
+  document?: string;
+  email: string;
+  password: string;
+  otpCode: string;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
