@@ -38,14 +38,32 @@ class ClientService {
       filter.tracking = { $regex: search, $options: 'i' };
     }
 
-    return this.packageRepo.findAll(filter, {
+    const result = await this.packageRepo.findAll(filter, {
       page: Number(page),
       limit: Number(limit),
       sort: { createdAt: -1 },
-      // No amount fields (cost/total/shippingCost/tax) in the client list —
-      // amounts are disclosed per-package only when status is `disponible`.
-      select: 'tracking carrierTracking description weight status createdAt deliveredAt photos',
+      select: 'tracking carrierTracking description weight total status createdAt deliveredAt photos',
     });
+
+    // Amount-to-pay disclosure (client-panel-specs): expose total + currency
+    // ONLY for packages with status `disponible`. Other statuses get the raw
+    // amount fields stripped so the client never sees intermediate costs.
+    const hasDisponible = result.data.some((p) => p.status === 'disponible');
+    let currency = 'DOP';
+    if (hasDisponible) {
+      const currencySetting = await this.models.Setting.findOne({ key: 'currency' });
+      if (currencySetting) currency = currencySetting.value;
+    }
+
+    for (const pkg of result.data) {
+      if (pkg.status === 'disponible') {
+        pkg.amountToPay = pkg.total;
+        pkg.currency = currency;
+      }
+      delete pkg.total;
+    }
+
+    return result;
   }
 
   async getPackageByTracking(tracking, customerId) {

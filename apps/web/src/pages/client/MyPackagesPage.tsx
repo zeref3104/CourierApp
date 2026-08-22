@@ -5,6 +5,7 @@ import { Table } from '../../components/ui/Table';
 import { StatusBadge } from '../../components/ui/Badge';
 import { useLiveRefresh } from '../../hooks/useSocketEvents';
 import { formatDate } from '../../utils/formatDate';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 export default function MyPackagesPage() {
   const { t } = useTranslation();
@@ -44,7 +45,14 @@ export default function MyPackagesPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400">{t('common.status')}</span>
-                <span><StatusBadge status={p.status} /></span>
+                <span className="flex items-center gap-2">
+                  <StatusBadge status={p.status} />
+                  {p.status === 'disponible' && p.amountToPay != null && (
+                    <span className="text-sm font-semibold text-primary-600 dark:text-primary-400">
+                      {formatCurrency(p.amountToPay, p.currency)}
+                    </span>
+                  )}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400">{t('common.date')}</span>
