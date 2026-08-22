@@ -38,6 +38,7 @@ const isTenantResolutionError = (err: any) => {
 };
 
 export default function LoginPage() {
+  console.log('🔥 [DEPLOY-CHECK] LoginPage v2 loaded — 2026-08-22');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
