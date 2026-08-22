@@ -186,7 +186,7 @@ const updateRateSchema = createRateSchema.partial();
 // --- Company (company.schema.js) ---
 // Payload for superadmin company provisioning. clientCodePrefix is optional:
 // when absent, the service suggests one from the company name (design D2).
-const createCompanySchema = z.object({
+const createCompanyBaseSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
   slug: z.string().min(2, 'Slug must be at least 2 characters').max(50),
   email: z.string().email('Invalid email format'),
@@ -197,12 +197,51 @@ const createCompanySchema = z.object({
     .string()
     .regex(new RegExp(CLIENT_CODE_PREFIX_PATTERN), 'Client code prefix must be 2-5 uppercase letters')
     .optional(),
+  licenseStartDate: z.string().optional(), // ISO date — when omitted, defaults to today
+  licenseEndDate: z.string().optional(),   // ISO date — when omitted, 14-day trial
 });
 
-const updateCompanySchema = createCompanySchema
+const createCompanySchema = createCompanyBaseSchema.refine(
+  (data) => {
+    if (data.licenseStartDate && data.licenseEndDate) {
+      return new Date(data.licenseEndDate) > new Date(data.licenseStartDate);
+    }
+    return true;
+  },
+  { message: 'License end date must be after start date', path: ['licenseEndDate'] },
+);
+
+const updateCompanySchema = createCompanyBaseSchema
   .partial()
   .omit({ clientCodePrefix: true }) // prefix is set once and immutable (design D1/D7)
   .extend({ isActive: z.boolean().optional(), isSuspended: z.boolean().optional() });
+
+// --- License ---
+const createLicenseSchema = z.object({
+  companyId: z.string().min(1, 'Company is required'),
+  planId: z.string().min(1, 'Plan is required'),
+  startDate: z.string().min(1, 'Start date is required'),
+  endDate: z.string().min(1, 'End date is required'),
+  status: z.enum(['active', 'trial', 'expired', 'cancelled']).optional(),
+}).refine(
+  (data) => new Date(data.endDate) > new Date(data.startDate),
+  { message: 'End date must be after start date', path: ['endDate'] },
+);
+
+const updateLicenseSchema = z.object({
+  planId: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  status: z.enum(['active', 'trial', 'expired', 'cancelled']).optional(),
+}).refine(
+  (data) => {
+    if (data.startDate && data.endDate) {
+      return new Date(data.endDate) > new Date(data.startDate);
+    }
+    return true;
+  },
+  { message: 'End date must be after start date', path: ['endDate'] },
+);
 
 // --- Client registration OTP (client-registration spec, design D5/D6) ---
 // 6-digit numeric code, emailed and stored hashed on the master DB.
@@ -314,6 +353,8 @@ module.exports = {
   updateRateSchema,
   createCompanySchema,
   updateCompanySchema,
+  createLicenseSchema,
+  updateLicenseSchema,
   otpSendSchema,
   otpVerifySchema,
   registerClientSchema,

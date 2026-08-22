@@ -20,6 +20,8 @@ export default function CreateCompanyPage() {
     phone: '',
     planId: '',
     clientCodePrefix: '',
+    licenseStartDate: '',
+    licenseEndDate: '',
   });
   // Once the admin edits the prefix manually, stop re-suggesting it on name
   // changes so their override is preserved (design D2 — server stays authoritative).
@@ -76,6 +78,8 @@ export default function CreateCompanyPage() {
         phone: form.phone || undefined,
         planId: form.planId,
         clientCodePrefix: form.clientCodePrefix || undefined,
+        licenseStartDate: form.licenseStartDate || undefined,
+        licenseEndDate: form.licenseEndDate || undefined,
       };
       const res = await companyService.create(data);
       setSuccess({
@@ -181,6 +185,24 @@ export default function CreateCompanyPage() {
               </p>
             )}
           </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label={t('companies.licenseStartDate')}
+              type="date"
+              value={form.licenseStartDate}
+              onChange={(e) => setForm({ ...form, licenseStartDate: e.target.value })}
+            />
+            <Input
+              label={t('companies.licenseEndDate')}
+              type="date"
+              value={form.licenseEndDate}
+              onChange={(e) => setForm({ ...form, licenseEndDate: e.target.value })}
+            />
+          </div>
+          <p className="text-xs text-gray-500 -mt-2">
+            {t('companies.licenseDatesHint')}
+          </p>
 
           {success && (
             <div className="bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-400 text-sm p-4 rounded-lg space-y-2">

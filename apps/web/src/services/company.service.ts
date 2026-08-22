@@ -28,6 +28,16 @@ export interface Plan {
   price: number;
 }
 
+export interface License {
+  _id: string;
+  companyId: { _id: string; name: string; slug: string } | string;
+  planId: { _id: string; name: string } | string;
+  startDate: string;
+  endDate: string;
+  status: 'active' | 'trial' | 'expired' | 'cancelled';
+  createdAt: string;
+}
+
 export interface CreateCompanyData {
   name: string;
   slug: string;
@@ -36,6 +46,8 @@ export interface CreateCompanyData {
   phone?: string;
   planId: string;
   clientCodePrefix?: string;
+  licenseStartDate?: string;
+  licenseEndDate?: string;
 }
 
 export const companyService = {
@@ -56,4 +68,20 @@ export const companyService = {
 
   getPlans: () =>
     api.get<ApiResponse<Plan[]>>('/superadmin/plans').then((r) => r.data),
+
+  // License CRUD
+  getLicenses: (params?: Record<string, any>) =>
+    api.get<ApiResponse<License[]>>('/superadmin/licenses', { params }).then((r) => r.data),
+
+  getLicense: (id: string) =>
+    api.get<ApiResponse<License>>(`/superadmin/licenses/${id}`).then((r) => r.data),
+
+  createLicense: (data: { companyId: string; planId: string; startDate: string; endDate: string }) =>
+    api.post<ApiResponse<License>>('/superadmin/licenses', data).then((r) => r.data),
+
+  updateLicense: (id: string, data: Partial<{ planId: string; startDate: string; endDate: string; status: string }>) =>
+    api.patch<ApiResponse<License>>(`/superadmin/licenses/${id}`, data).then((r) => r.data),
+
+  deleteLicense: (id: string) =>
+    api.delete<ApiResponse<{ deleted: boolean }>>(`/superadmin/licenses/${id}`).then((r) => r.data),
 };

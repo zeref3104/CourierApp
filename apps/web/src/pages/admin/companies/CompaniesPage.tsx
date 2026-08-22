@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
-import { companyService, Company } from '../../../services/company.service';
+import { companyService, Company, License } from '../../../services/company.service';
 import { RootState } from '../../../store';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
@@ -14,6 +14,7 @@ export default function CompaniesPage() {
   const { t } = useTranslation();
   const user = useSelector((state: RootState) => state.auth.user);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [licenses, setLicenses] = useState<Record<string, License>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -26,6 +27,19 @@ export default function CompaniesPage() {
     try {
       const res = await companyService.findAll({ search, limit: 50 });
       setCompanies(res.data);
+      // Fetch licenses for all companies
+      const licensesRes = await companyService.getLicenses({ limit: 100 });
+      const licenseMap: Record<string, License> = {};
+      if (licensesRes.data) {
+        licensesRes.data.forEach((lic) => {
+          const companyId = typeof lic.companyId === 'string' ? lic.companyId : lic.companyId._id;
+          // Keep the most recent license per company
+          if (!licenseMap[companyId] || new Date(lic.createdAt) > new Date(licenseMap[companyId].createdAt)) {
+            licenseMap[companyId] = lic;
+          }
+        });
+      }
+      setLicenses(licenseMap);
     } catch (err) {
       console.error(err);
     } finally {
@@ -77,6 +91,7 @@ export default function CompaniesPage() {
                   <th className="text-left py-3 px-4 font-medium">{t('companies.slug')}</th>
                   <th className="text-left py-3 px-4 font-medium">{t('common.email')}</th>
                   <th className="text-left py-3 px-4 font-medium">{t('companies.plan')}</th>
+                  <th className="text-left py-3 px-4 font-medium">{t('companies.license')}</th>
                   <th className="text-left py-3 px-4 font-medium">{t('common.status')}</th>
                   <th className="text-left py-3 px-4 font-medium">{t('common.created')}</th>
                   <th className="text-right py-3 px-4 font-medium">{t('common.actions')}</th>
@@ -89,6 +104,15 @@ export default function CompaniesPage() {
                     <td className="py-3 px-4 text-gray-500">{c.slug}</td>
                     <td className="py-3 px-4">{c.email}</td>
                     <td className="py-3 px-4">{c.planId?.name || t('companies.noPlan')}</td>
+                    <td className="py-3 px-4">
+                      {licenses[c._id] ? (
+                        <Badge variant={licenses[c._id].status === 'active' ? 'success' : licenses[c._id].status === 'trial' ? 'warning' : 'danger'}>
+                          {licenses[c._id].status}
+                        </Badge>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
                     <td className="py-3 px-4">
                       <Badge variant={c.isActive ? 'success' : 'danger'}>
                         {c.isActive ? t('common.active') : t('common.inactive')}

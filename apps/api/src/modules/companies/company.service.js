@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const Plan = require('../../models/master/Plan');
 const License = require('../../models/master/License');
+const licenseService = require('./license.service');
 const ConflictException = require('../../exceptions/ConflictException');
 const NotFoundException = require('../../exceptions/NotFoundException');
 const ValidationException = require('../../exceptions/ValidationException');
@@ -71,16 +72,13 @@ class CompanyService {
       throw err;
     }
 
-    // Create trial license
-    await License.create({
-      companyId: company._id,
-      planId: data.planId,
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-      status: 'trial',
-    });
-
     logger.info(`Company created: ${company.slug} (DB: ${databaseName})`);
+
+    // Create trial license (admin may provide custom dates, else 14-day default)
+    await licenseService.provision(company._id, data.planId, masterConnection, {
+      startDate: data.licenseStartDate,
+      endDate: data.licenseEndDate,
+    });
 
     // Provision tenant database — get connection creates it if not exists
     let tenantConnection;

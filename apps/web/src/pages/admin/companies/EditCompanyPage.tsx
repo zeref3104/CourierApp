@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { companyService, Plan, Company } from '../../../services/company.service';
+import { companyService, Plan, Company, License } from '../../../services/company.service';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
+import { Badge } from '../../../components/ui/Badge';
 
 export default function EditCompanyPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [license, setLicense] = useState<License | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState('');
@@ -20,14 +22,20 @@ export default function EditCompanyPage() {
     phone: '',
     planId: '',
   });
+  const [licenseForm, setLicenseForm] = useState({
+    startDate: '',
+    endDate: '',
+    status: '',
+  });
 
   useEffect(() => {
     if (!id) return;
     Promise.all([
       companyService.findById(id),
       companyService.getPlans(),
+      companyService.getLicenses({ companyId: id }),
     ])
-      .then(([companyRes, plansRes]) => {
+      .then(([companyRes, plansRes, licensesRes]) => {
         const company = companyRes.data;
         setForm({
           name: company.name,
@@ -36,6 +44,16 @@ export default function EditCompanyPage() {
           planId: company.planId?._id || '',
         });
         setPlans(plansRes.data);
+        // Get the most recent license
+        if (licensesRes.data && licensesRes.data.length > 0) {
+          const lic = licensesRes.data[0];
+          setLicense(lic);
+          setLicenseForm({
+            startDate: lic.startDate ? new Date(lic.startDate).toISOString().split('T')[0] : '',
+            endDate: lic.endDate ? new Date(lic.endDate).toISOString().split('T')[0] : '',
+            status: lic.status,
+          });
+        }
       })
       .catch(() => setError(t('common.loadDataError')))
       .finally(() => setFetching(false));
@@ -56,6 +74,14 @@ export default function EditCompanyPage() {
         phone: form.phone || undefined,
         planId: form.planId,
       });
+      // Update license if it exists
+      if (license && licenseForm.startDate && licenseForm.endDate) {
+        await companyService.updateLicense(license._id, {
+          startDate: licenseForm.startDate,
+          endDate: licenseForm.endDate,
+          planId: form.planId,
+        });
+      }
       navigate('/companies');
     } catch (err: any) {
       setError(err.response?.data?.error?.message || err.response?.data?.message || t('companies.updateError'));
@@ -121,6 +147,31 @@ export default function EditCompanyPage() {
               ))}
             </select>
           </div>
+
+          {license && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium">{t('companies.license')}</h3>
+                <Badge variant={license.status === 'active' ? 'success' : license.status === 'trial' ? 'warning' : 'danger'}>
+                  {license.status}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label={t('companies.licenseStartDate')}
+                  type="date"
+                  value={licenseForm.startDate}
+                  onChange={(e) => setLicenseForm({ ...licenseForm, startDate: e.target.value })}
+                />
+                <Input
+                  label={t('companies.licenseEndDate')}
+                  type="date"
+                  value={licenseForm.endDate}
+                  onChange={(e) => setLicenseForm({ ...licenseForm, endDate: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 dark:bg-red-900/50 text-red-600 dark:text-red-400 text-sm p-3 rounded-lg">
