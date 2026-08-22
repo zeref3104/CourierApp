@@ -36,7 +36,7 @@ export default function EditCompanyPage() {
       companyService.getLicenses({ companyId: id }),
     ])
       .then(([companyRes, plansRes, licensesRes]) => {
-        const company = companyRes.data;
+        const { company } = companyRes.data;
         setForm({
           name: company.name,
           email: company.email,
