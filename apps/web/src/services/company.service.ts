@@ -38,6 +38,11 @@ export interface License {
   createdAt: string;
 }
 
+export interface CompanyDetail {
+  company: Company;
+  license: License | null;
+}
+
 export interface CreateCompanyData {
   name: string;
   slug: string;
@@ -55,7 +60,7 @@ export const companyService = {
     api.get<ApiResponse<Company[]>>('/superadmin/companies', { params }).then((r) => r.data),
 
   findById: (id: string) =>
-    api.get<ApiResponse<Company>>(`/superadmin/companies/${id}`).then((r) => r.data),
+    api.get<ApiResponse<CompanyDetail>>(`/superadmin/companies/${id}`).then((r) => r.data),
 
   create: (data: CreateCompanyData) =>
     api.post<ApiResponse<Company>>('/superadmin/companies', data).then((r) => r.data),
