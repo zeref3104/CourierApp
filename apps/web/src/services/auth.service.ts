@@ -29,7 +29,7 @@ export const authService = {
     api.post<ApiResponse<{ message: string }>>('/auth/client/otp/send', data).then((r) => r.data),
 
   verifyOtp: (data: { email: string; code: string }) =>
-    api.post<ApiResponse<{ valid: boolean }>>('/auth/client/otp/verify', data).then((r) => r.data),
+    api.post<ApiResponse<{ verified: boolean }>>('/auth/client/otp/verify', data).then((r) => r.data),
 
   registerClient: (data: RegisterClientRequest) =>
     api.post<ApiResponse<ClientLoginResponse>>('/auth/client/register', data).then((r) => r.data),

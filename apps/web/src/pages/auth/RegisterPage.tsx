@@ -133,7 +133,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const verifyRes = await authService.verifyOtp({ email: watch('email'), code: otp });
-      if (!verifyRes.data.valid) {
+      if (!verifyRes.data?.verified) {
         setError(t('auth.otpVerifyError'));
         return;
       }
@@ -170,10 +170,12 @@ export default function RegisterPage() {
       );
       navigate('/client');
     } catch (err: any) {
-      const msg = err.response?.data?.error?.message;
-      if (msg === 'OTP_INVALID' || msg === 'OTP_EXPIRED') {
+      const errData = err.response?.data?.error;
+      const msg: string = errData?.message ?? '';
+      // API sends 422 with messages like "Invalid OTP code", "OTP expired", "OTP already used"
+      if (/^(OTP|Invalid OTP)/.test(msg)) {
         setError(t('auth.otpVerifyError'));
-      } else if (msg === 'EMAIL_EXISTS') {
+      } else if (errData?.code === 'CONFLICT' && /already registered/i.test(msg)) {
         setError(t('register.error.emailExists'));
       } else {
         setError(t('auth.registerError'));
