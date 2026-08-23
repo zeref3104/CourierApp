@@ -66,10 +66,10 @@ class EmailService {
         text,
         html: html || text,
       });
-      logger.debug('Email sent: %s', info.messageId);
+      logger.debug(`Email sent: ${info.messageId}`);
       return info;
     } catch (err) {
-      logger.error('Email send failed: %s', err.message);
+      logger.error(`Email send failed: ${err.message}`);
       // Don't throw — email failures should not break the request
     }
   }
