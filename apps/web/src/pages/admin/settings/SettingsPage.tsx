@@ -5,6 +5,7 @@ import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import LanguageSwitcher from '../../../components/settings/LanguageSwitcher';
 import { setLanguage, isSupportedLanguage, type SupportedLanguage } from '../../../i18n';
+import { settingsService } from '../../../services/settings.service';
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   DOP: 'RD$',
@@ -69,6 +70,7 @@ export default function SettingsPage() {
       };
       await api.patch('/settings', payload);
       localStorage.setItem('currency', form.currency);
+      settingsService.invalidateCompanyName();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err: any) {

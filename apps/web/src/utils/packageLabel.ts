@@ -70,7 +70,7 @@ export function buildPackageLabelHtml(
       border-bottom: 2px solid #000;
       padding-bottom: 1.5mm;
     }
-    .company { font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+    .company { font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
     .tag { font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #444; }
     .tracking {
       font-family: Consolas, 'Courier New', monospace;

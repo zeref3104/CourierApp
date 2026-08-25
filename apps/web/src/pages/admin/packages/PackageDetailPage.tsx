@@ -8,6 +8,7 @@ import { StatusBadge } from '../../../components/ui/Badge';
 import { formatDate, formatDateTime } from '../../../utils/formatDate';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import { printPackageLabel } from '../../../utils/packageLabel';
+import { settingsService } from '../../../services/settings.service';
 import { useLiveRefresh } from '../../../hooks/useSocketEvents';
 import { STATUS_TRANSITIONS } from '@courier/constants';
 
@@ -17,6 +18,7 @@ export default function PackageDetailPage() {
   const [pkg, setPkg] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [companyName, setCompanyName] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -27,6 +29,7 @@ export default function PackageDetailPage() {
       setPkg(pkgRes.data);
       setHistory(historyRes.data);
     }).finally(() => setLoading(false));
+    settingsService.getCompanyName().then(setCompanyName);
   }, [id]);
 
   useLiveRefresh('socket:packages-changed', () => {
@@ -49,7 +52,7 @@ export default function PackageDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t('packages.titleWithTracking', { tracking: pkg.tracking })}</h1>
-        <Button onClick={() => printPackageLabel(pkg)}>{t('packages.printLabel')}</Button>
+        <Button onClick={() => printPackageLabel(pkg, companyName)}>{t('packages.printLabel')}</Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

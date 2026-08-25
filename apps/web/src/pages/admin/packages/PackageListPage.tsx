@@ -16,6 +16,7 @@ import { useLiveRefresh } from '../../../hooks/useSocketEvents';
 import { formatDate, formatRelative } from '../../../utils/formatDate';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import { printPackageLabel } from '../../../utils/packageLabel';
+import { settingsService } from '../../../services/settings.service';
 import { Printer } from 'lucide-react';
 
 // Quick filter subset of the full status list (kept in sync with status.* keys).
@@ -31,10 +32,12 @@ export default function PackageListPage() {
   const [branchFilter, setBranchFilter] = useState(user?.branchId || '');
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [companyName, setCompanyName] = useState('');
   const debouncedSearch = useDebounce(search, 300);
 
   useEffect(() => {
     branchService.findAll({ limit: 100 }).then((r) => setBranches(r.data)).catch(() => {});
+    settingsService.getCompanyName().then(setCompanyName);
   }, []);
 
   const load = async (page = 1) => {
@@ -133,7 +136,7 @@ export default function PackageListPage() {
                 <span className="text-gray-500 text-xs">{formatRelative(p.createdAt)}</span>
               </div>
               <div className="pt-2 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                <Button size="sm" variant="ghost" onClick={() => printPackageLabel(p)} className="gap-1.5">
+                <Button size="sm" variant="ghost" onClick={() => printPackageLabel(p, companyName)} className="gap-1.5">
                   <Printer className="w-3.5 h-3.5" />
                   {t('packages.printLabel')}
                 </Button>
