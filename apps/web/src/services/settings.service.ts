@@ -8,7 +8,7 @@ export const settingsService = {
     try {
       const res = await api.get('/settings');
       cachedCompanyName = res.data?.data?.company_name || '';
-      return cachedCompanyName;
+      return cachedCompanyName ?? '';
     } catch {
       return '';
     }
