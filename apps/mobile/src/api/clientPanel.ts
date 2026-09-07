@@ -17,6 +17,8 @@ export interface DashboardStats {
   readyForPickup: number;
   delivered: number;
   lastTracking: Array<{ tracking: string; status: string; createdAt: string }>;
+  logoUrl: string | null;
+  companyName: string | null;
 }
 
 export interface PackageSummary {
@@ -141,5 +143,19 @@ export async function fetchProfile(): Promise<ClientProfileDetail> {
 /** PATCH /client/profile — update email/phone/address; returns the updated profile. */
 export async function updateProfile(patch: ProfilePatch): Promise<ClientProfileDetail> {
   const { data } = await api.patch<{ data: ClientProfileDetail }>('/client/profile', patch);
+  return data.data;
+}
+
+export interface PublicSettings {
+  company_name?: string;
+  logo_url?: string;
+  company_phone?: string;
+  company_email?: string;
+  company_address?: string;
+}
+
+/** GET /settings/public — unauthenticated company info (logo, name, contact). */
+export async function fetchPublicSettings(): Promise<PublicSettings> {
+  const { data } = await api.get<{ data: PublicSettings }>('/settings/public');
   return data.data;
 }

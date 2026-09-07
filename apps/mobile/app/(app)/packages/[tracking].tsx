@@ -64,7 +64,7 @@ export default function TrackingDetailScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.tracking}>{t('tracking.tracking')}: {pkg.tracking}</Text>
-      <Text style={[styles.status, { color: '#2563eb' }]}>{t(`status.${pkg.status}`)}</Text>
+      <Text style={[styles.status, { color: '#16a34a' }]}>{t(`status.${pkg.status}`)}</Text>
 
       {showAmountCard ? (
         <View style={styles.amountCard}>
@@ -106,23 +106,23 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 32 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   errorText: { color: '#dc2626', marginBottom: 16 },
-  retry: { backgroundColor: '#2563eb', padding: 12, borderRadius: 8 },
+  retry: { backgroundColor: '#16a34a', padding: 12, borderRadius: 8 },
   retryText: { color: '#fff', fontWeight: '600' },
   tracking: { fontSize: 22, fontWeight: '700', marginBottom: 4 },
   status: { fontSize: 15, fontWeight: '600', marginBottom: 16 },
   amountCard: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#f0fdf4',
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: '#bbf7d0',
   },
   amountLabel: { fontSize: 13, color: '#475569' },
-  amountValue: { fontSize: 32, fontWeight: '800', color: '#1d4ed8', marginVertical: 4 },
+  amountValue: { fontSize: 32, fontWeight: '800', color: '#15803d', marginVertical: 4 },
   branchTitle: { fontSize: 13, color: '#475569', marginTop: 8 },
   branchText: { fontSize: 15, color: '#0f172a', fontWeight: '500' },
-  payAtPickup: { fontSize: 12, color: '#2563eb', marginTop: 8 },
+  payAtPickup: { fontSize: 12, color: '#16a34a', marginTop: 8 },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 12 },
   empty: { color: '#64748b', paddingVertical: 8 },
   timelineRow: { flexDirection: 'row', marginBottom: 16 },
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#16a34a',
     marginTop: 5,
     marginRight: 12,
   },

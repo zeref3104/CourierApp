@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   listContent: { padding: 16, paddingBottom: 32 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   errorText: { color: '#dc2626', marginBottom: 16 },
-  retry: { backgroundColor: '#2563eb', padding: 12, borderRadius: 8 },
+  retry: { backgroundColor: '#16a34a', padding: 12, borderRadius: 8 },
   retryText: { color: '#fff', fontWeight: '600' },
   row: {
     paddingVertical: 12,
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e2e8f0',
   },
   rowHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  rowType: { fontSize: 12, fontWeight: '600', color: '#2563eb' },
+  rowType: { fontSize: 12, fontWeight: '600', color: '#16a34a' },
   rowDate: { fontSize: 12, color: '#94a3b8' },
   rowTitle: { fontSize: 15, fontWeight: '600', color: '#0f172a' },
   rowMessage: { fontSize: 13, color: '#475569', marginTop: 2 },

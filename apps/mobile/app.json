@@ -6,10 +6,16 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "courier",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#16a34a"
+    },
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.charmeurexpress.courier",
+      "bundleIdentifier": "courierApp.Stockin",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
@@ -17,8 +23,12 @@
       }
     },
     "android": {
-      "package": "com.charmeurexpress.courier",
-      "versionCode": 1
+      "package": "courierApp.Stockin",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#16a34a"
+      }
     },
     "plugins": [
       "expo-router",
@@ -29,6 +39,9 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
     }
   }
 }

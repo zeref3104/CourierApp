@@ -36,6 +36,8 @@ import SettingsPage from './pages/admin/settings/SettingsPage';
 import ClientDashboardPage from './pages/client/ClientDashboardPage';
 import MyPackagesPage from './pages/client/MyPackagesPage';
 import ClientPackageDetailPage from './pages/client/PackageDetailPage';
+import ClientSupportPage from './pages/client/ClientSupportPage';
+import ClientProfilePage from './pages/client/ClientProfilePage';
 
 import ProtectedRoute from './router/ProtectedRoute';
 import { useSocket } from './hooks/useSocket';
@@ -106,6 +108,8 @@ function App() {
           <Route path="/client" element={<ClientDashboardPage />} />
           <Route path="/client/packages" element={<MyPackagesPage />} />
           <Route path="/client/packages/:tracking" element={<ClientPackageDetailPage />} />
+          <Route path="/client/support" element={<ClientSupportPage />} />
+          <Route path="/client/profile" element={<ClientProfilePage />} />
         </Route>
       </Route>
     </Routes>

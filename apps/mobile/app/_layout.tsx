@@ -1,5 +1,7 @@
+import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useSessionBootstrap } from '@/lib/session';
 
 /**
@@ -12,14 +14,14 @@ export default function RootLayout() {
   useSessionBootstrap();
 
   return (
-    <>
-      <StatusBar style="auto" />
+    <SafeAreaProvider>
+      <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(app)" />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ title: '' }} />
       </Stack>
-    </>
+    </SafeAreaProvider>
   );
 }

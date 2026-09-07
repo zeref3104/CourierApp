@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   errorText: { color: '#dc2626', marginBottom: 12 },
   successText: { color: '#16a34a', marginBottom: 12 },
-  retry: { backgroundColor: '#2563eb', padding: 12, borderRadius: 8 },
+  retry: { backgroundColor: '#16a34a', padding: 12, borderRadius: 8 },
   retryText: { color: '#fff', fontWeight: '600' },
   name: { fontSize: 24, fontWeight: '700' },
   code: { fontSize: 14, color: '#475569', marginTop: 4 },
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
   },
-  save: { backgroundColor: '#2563eb', padding: 14, borderRadius: 8, alignItems: 'center' },
+  save: { backgroundColor: '#16a34a', padding: 14, borderRadius: 8, alignItems: 'center' },
   saveDisabled: { opacity: 0.6 },
   saveText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

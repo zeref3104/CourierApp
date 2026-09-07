@@ -11,7 +11,7 @@ class ClientService {
   }
 
   async getDashboard(customerId) {
-    const [totalPackages, inTransit, delivered, readyForPickup, lastFive] = await Promise.all([
+    const [totalPackages, inTransit, delivered, readyForPickup, lastFive, logoSetting, nameSetting] = await Promise.all([
       this.packageRepo.count({ customerId }),
       this.models.Package.countDocuments({
         customerId,
@@ -24,9 +24,19 @@ class ClientService {
         .limit(5)
         .select('tracking status createdAt')
         .lean(),
+      this.models.Setting.findOne({ key: 'logo_url' }).lean(),
+      this.models.Setting.findOne({ key: 'company_name' }).lean(),
     ]);
 
-    return { totalPackages, inTransit, delivered, readyForPickup, lastTracking: lastFive };
+    return {
+      totalPackages,
+      inTransit,
+      delivered,
+      readyForPickup,
+      lastTracking: lastFive,
+      logoUrl: logoSetting?.value || null,
+      companyName: nameSetting?.value || null,
+    };
   }
 
   async getPackages(customerId, query = {}) {

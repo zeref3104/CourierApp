@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
@@ -15,12 +15,15 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 
 export default function SettingsPage() {
   const { t } = useTranslation();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     company_name: '', company_address: '', company_phone: '', company_email: '', rnc: '', currency: 'DOP',
     price_per_lb: '', minimum_price: '', tax_rate: '',
   });
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   const currencySymbol = CURRENCY_SYMBOLS[form.currency] || form.currency;
 
@@ -52,9 +55,34 @@ export default function SettingsPage() {
           minimum_price: s.minimum_price?.toString() || '',
           tax_rate: s.tax_rate?.toString() || '',
         });
+        if (s.logo_url) setLogoUrl(s.logo_url);
       }).catch(() => {});
     });
   }, []);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoUploading(true);
+    try {
+      const { default: api } = await import('../../../config/axios');
+      const formData = new FormData();
+      formData.append('logo', file);
+      const res = await api.post('/settings/logo', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const url = res.data?.data?.logoUrl;
+      if (url) {
+        setLogoUrl(url);
+        settingsService.invalidateLogoUrl();
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.error?.message || t('settings.logoUploadError'));
+    } finally {
+      setLogoUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,6 +124,39 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-bold mb-6">{t('settings.title')}</h1>
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Logo upload */}
+          <div className="flex items-center gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+            <div
+              className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-800 cursor-pointer hover:border-primary-400 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <span className="text-3xl opacity-40">📦</span>
+              )}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">{t('settings.logo')}</p>
+              <p className="text-xs text-gray-500 mb-2">{t('settings.logoHelp')}</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleLogoUpload}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => fileInputRef.current?.click()}
+                loading={logoUploading}
+              >
+                {logoUrl ? t('settings.changeLogo') : t('settings.uploadLogo')}
+              </Button>
+            </div>
+          </div>
+
           <Input label={t('settings.companyName')} value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} />
           <Input label={t('settings.address')} value={form.company_address} onChange={(e) => setForm({ ...form, company_address: e.target.value })} />
           <Input label={t('settings.phone')} value={form.company_phone} onChange={(e) => setForm({ ...form, company_phone: e.target.value })} />
