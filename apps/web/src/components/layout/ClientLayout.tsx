@@ -9,10 +9,10 @@ import { clearClientRefreshToken } from '../../utils/clientAuthStorage';
 import { settingsService } from '../../services/settings.service';
 
 const BOTTOM_TABS = [
-  { to: '/client', icon: '🏠', labelKey: 'client.tabHome' },
-  { to: '/client/packages', icon: '📦', labelKey: 'client.tabPackages' },
-  { to: '/client/support', icon: '💬', labelKey: 'client.tabSupport' },
-  { to: '/client/profile', icon: '👤', labelKey: 'client.tabAccount' },
+  { to: '/client', icon: '🏠', labelKey: 'client.tabHome' as const },
+  { to: '/client/packages', icon: '📦', labelKey: 'client.tabPackages' as const },
+  { to: '/client/support', icon: '💬', labelKey: 'client.tabSupport' as const },
+  { to: '/client/profile', icon: '👤', labelKey: 'client.tabAccount' as const },
 ];
 
 export default function ClientLayout() {
