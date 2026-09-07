@@ -438,5 +438,12 @@
   "auth.changeEmail": "Change email",
   "auth.otpVerifyError": "Invalid or expired verification code",
   "push.packageStatusTitle": "Your package {{statusLabel}}",
-  "push.packageStatusBody": "Package #{{tracking}}: {{statusLabel}}"
+  "push.packageStatusBody": "Package #{{tracking}}: {{statusLabel}}",
+  "scanner.instruction": "Scan the package barcode",
+  "scanner.received": "Package received ✅",
+  "scanner.notFound": "Package not found ❌",
+  "scanner.error": "Error looking up package",
+  "scanner.scanAgain": "Scan another",
+  "scanner.close": "Close",
+  "scanner.trackingScanned": "Scanned code"
 }

@@ -438,5 +438,12 @@
   "auth.changeEmail": "Cambiar correo",
   "auth.otpVerifyError": "Código de verificación inválido o expirado",
   "push.packageStatusTitle": "Tu paquete {{statusLabel}}",
-  "push.packageStatusBody": "Paquete #{{tracking}}: {{statusLabel}}"
+  "push.packageStatusBody": "Paquete #{{tracking}}: {{statusLabel}}",
+  "scanner.instruction": "Escanea el código de barras del paquete",
+  "scanner.received": "Paquete recibido ✅",
+  "scanner.notFound": "Paquete no encontrado ❌",
+  "scanner.error": "Error al buscar el paquete",
+  "scanner.scanAgain": "Escanear otro",
+  "scanner.close": "Cerrar",
+  "scanner.trackingScanned": "Código escaneado"
 }

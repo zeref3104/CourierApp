@@ -11,6 +11,8 @@ import { Pagination } from '../../../components/ui/Pagination';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { StatusBadge } from '../../../components/ui/Badge';
+import { ScanInput } from '../../../components/packages/ScanInput';
+import { ScanResult, ScanState } from '../../../components/packages/ScanResult';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useLiveRefresh } from '../../../hooks/useSocketEvents';
 import { formatDate, formatRelative } from '../../../utils/formatDate';
@@ -33,6 +35,9 @@ export default function PackageListPage() {
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [companyName, setCompanyName] = useState('');
+  const [scanState, setScanState] = useState<ScanState>('idle');
+  const [scannedPkg, setScannedPkg] = useState<any>(null);
+  const [scannedCode, setScannedCode] = useState('');
   const debouncedSearch = useDebounce(search, 300);
 
   useEffect(() => {
@@ -57,6 +62,29 @@ export default function PackageListPage() {
   useEffect(() => { load(1); }, [debouncedSearch, statusFilter, branchFilter]);
 
   useLiveRefresh('socket:packages-changed', () => load(meta.page));
+
+  const handleScan = async (tracking: string) => {
+    setScanState('loading');
+    setScannedCode(tracking);
+    setScannedPkg(null);
+    try {
+      const res = await packageService.findByTracking(tracking);
+      setScannedPkg(res.data);
+      setScanState('found');
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        setScanState('not_found');
+      } else {
+        setScanState('error');
+      }
+    }
+  };
+
+  const handleScanReset = () => {
+    setScanState('idle');
+    setScannedPkg(null);
+    setScannedCode('');
+  };
 
   return (
     <div className="space-y-4">
@@ -98,6 +126,12 @@ export default function PackageListPage() {
             <option key={b._id} value={b._id}>{b.name}</option>
           ))}
         </select>
+      </div>
+
+      {/* Scanner */}
+      <div className="flex flex-col gap-3">
+        <ScanInput onScan={handleScan} disabled={scanState === 'loading'} />
+        <ScanResult state={scanState} pkg={scannedPkg} scannedCode={scannedCode} onReset={handleScanReset} />
       </div>
 
       <Card padding={false}>

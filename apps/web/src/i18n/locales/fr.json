@@ -438,5 +438,12 @@
   "auth.changeEmail": "Changer l'e-mail",
   "auth.otpVerifyError": "Code de vérification invalide ou expiré",
   "push.packageStatusTitle": "Colis {{statusLabel}}",
-  "push.packageStatusBody": "Colis n°{{tracking}} : {{statusLabel}}"
+  "push.packageStatusBody": "Colis n°{{tracking}} : {{statusLabel}}",
+  "scanner.instruction": "Scannez le code-bar du colis",
+  "scanner.received": "Colis reçu ✅",
+  "scanner.notFound": "Colis non trouvé ❌",
+  "scanner.error": "Erreur de recherche du colis",
+  "scanner.scanAgain": "Scanner un autre",
+  "scanner.close": "Fermer",
+  "scanner.trackingScanned": "Code scanné"
 }
