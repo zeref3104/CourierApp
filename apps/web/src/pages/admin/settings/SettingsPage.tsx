@@ -73,7 +73,10 @@ export default function SettingsPage() {
       });
       const url = res.data?.data?.logoUrl;
       if (url) {
-        setLogoUrl(url);
+        // Resolve relative URL against the API origin
+        const origin = (api.defaults.baseURL || '').replace(/\/api\/v\d+\/?$/, '');
+        const resolvedUrl = url.startsWith('http') ? url : `${origin}${url}`;
+        setLogoUrl(resolvedUrl);
         settingsService.invalidateLogoUrl();
       }
     } catch (err: any) {
