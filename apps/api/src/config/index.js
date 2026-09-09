@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 
 const requiredSecrets = ['JWT_SECRET', 'JWT_REFRESH_SECRET'];
 const missing = requiredSecrets.filter((key) => !process.env[key]);
@@ -45,6 +46,10 @@ const config = {
   // positive number, the rate limiter honors X-Forwarded-For. Leave unset/0
   // for direct exposure so the header cannot be spoofed to bypass limits.
   trustProxy: process.env.TRUST_PROXY ? parseInt(process.env.TRUST_PROXY, 10) : 0,
+
+  upload: {
+    dir: process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads'),
+  },
 
   cors: {
     // Comma-separated list of allowed origins (dev + prod). The `cors` and

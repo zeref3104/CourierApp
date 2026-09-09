@@ -30,13 +30,14 @@ class SettingService {
 
   async uploadLogo(file, models) {
     if (!file) throw new NotFoundException('File');
-    // Cloudinary upload handled by multer middleware
+    // Store URL-accessible path (relative to static mount)
+    const logoUrl = `/uploads/courier/${file.filename}`;
     await models.Setting.findOneAndUpdate(
       { key: 'logo_url' },
-      { value: file.path, updatedById: null },
+      { value: logoUrl, updatedById: null },
       { upsert: true }
     );
-    return file.path;
+    return logoUrl;
   }
 
   async getPublic(models) {
