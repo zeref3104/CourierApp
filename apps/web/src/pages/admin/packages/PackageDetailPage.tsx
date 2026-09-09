@@ -10,7 +10,7 @@ import { formatCurrency } from '../../../utils/formatCurrency';
 import { printPackageLabel } from '../../../utils/packageLabel';
 import { settingsService } from '../../../services/settings.service';
 import { useLiveRefresh } from '../../../hooks/useSocketEvents';
-import { STATUS_TRANSITIONS } from '@courier/constants';
+import { STATUS_TRANSITIONS, CARRIER_LABELS, CARRIER_TRACKING_URLS } from '@courier/constants';
 
 export default function PackageDetailPage() {
   const { id } = useParams();
@@ -76,6 +76,25 @@ export default function PackageDetailPage() {
               <p className="text-sm text-gray-500">{t('common.branch')}</p>
               <p className="font-medium">{pkg.branchId?.name || 'N/A'}</p>
             </div>
+            {pkg.carrier && (
+              <div>
+                <p className="text-sm text-gray-500">{t('packages.carrier')}</p>
+                <p className="font-medium">{CARRIER_LABELS[pkg.carrier] || pkg.carrier}</p>
+              </div>
+            )}
+            {pkg.carrier && pkg.carrier !== 'other' && pkg.carrierTracking && (
+              <div>
+                <p className="text-sm text-gray-500">{t('packages.carrierTracking')}</p>
+                <a
+                  href={CARRIER_TRACKING_URLS[pkg.carrier] + pkg.carrierTracking}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-primary-600 hover:text-primary-700"
+                >
+                  {pkg.carrierTracking} ↗
+                </a>
+              </div>
+            )}
             <div>
               <p className="text-sm text-gray-500">{t('packages.weight')}</p>
               <p className="font-medium">{pkg.weight} lbs</p>

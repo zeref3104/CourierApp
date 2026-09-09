@@ -69,7 +69,7 @@ class PackageService {
 
   async findAll(query = {}) {
     const {
-      page = 1, limit = 20, search, status, branchId,
+      page = 1, limit = 20, search, status, branchId, carrier,
       customerId, isPaid, dateFrom, dateTo,
       sortBy = 'createdAt', sortOrder = 'desc',
     } = query;
@@ -91,6 +91,7 @@ class PackageService {
       filter.$or = [
         { tracking: { $regex: search, $options: 'i' } },
         { carrierTracking: { $regex: search, $options: 'i' } },
+        { carrier: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
       ];
 
@@ -100,6 +101,7 @@ class PackageService {
     }
     if (status) filter.status = Array.isArray(status) ? { $in: status } : status;
     if (branchId) filter.branchId = branchId;
+    if (carrier) filter.carrier = carrier;
     if (customerId) filter.customerId = customerId;
     if (isPaid !== undefined) filter.isPaid = isPaid === 'true';
     if (dateFrom || dateTo) {

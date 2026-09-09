@@ -6,6 +6,7 @@ import { StatusBadge } from '../../components/ui/Badge';
 import { useLiveRefresh } from '../../hooks/useSocketEvents';
 import { formatDate } from '../../utils/formatDate';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { CARRIER_LABELS, CARRIER_TRACKING_URLS } from '@courier/constants';
 import type { ClientPackageDetail } from '../../types/package';
 
 export default function ClientPackageDetailPage() {
@@ -44,6 +45,25 @@ export default function ClientPackageDetailPage() {
           <p>{pkg.description}</p>
           <p className="text-sm text-gray-500 mt-4">{t('packages.weight')}</p>
           <p>{pkg.weight} lbs</p>
+          {pkg.carrier && pkg.carrier !== 'other' && (
+            <>
+              <p className="text-sm text-gray-500 mt-4">{t('packages.carrier')}</p>
+              <p>{CARRIER_LABELS[pkg.carrier] || pkg.carrier}</p>
+            </>
+          )}
+          {pkg.carrier && pkg.carrier !== 'other' && pkg.carrierTracking && (
+            <>
+              <p className="text-sm text-gray-500 mt-4">{t('packages.carrierTracking')}</p>
+              <a
+                href={CARRIER_TRACKING_URLS[pkg.carrier] + pkg.carrierTracking}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-600 hover:text-primary-700"
+              >
+                {pkg.carrierTracking} ↗
+              </a>
+            </>
+          )}
         </Card>
         {showAmountSection && (
           <Card>

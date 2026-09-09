@@ -1,6 +1,8 @@
 export interface Package {
   _id: string;
   tracking: string;
+  carrier?: string;
+  carrierTracking?: string;
   customerId: { _id: string; name: string; lastName: string; code: string };
   description: string;
   weight: number;
@@ -42,6 +44,8 @@ export interface PackageHistory {
 export interface ClientPackageDetail {
   _id: string;
   tracking: string;
+  carrier?: string;
+  carrierTracking?: string;
   status: string;
   description?: string;
   weight?: number;

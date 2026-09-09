@@ -19,6 +19,7 @@ import { formatDate, formatRelative } from '../../../utils/formatDate';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import { printPackageLabel } from '../../../utils/packageLabel';
 import { settingsService } from '../../../services/settings.service';
+import { CARRIER_LABELS } from '@courier/constants';
 import { Printer } from 'lucide-react';
 
 // Quick filter subset of the full status list (kept in sync with status.* keys).
@@ -153,6 +154,12 @@ export default function PackageListPage() {
                 <span className="text-xs text-gray-500 dark:text-gray-400">{t('common.branch')}</span>
                 <span>{p.branchId?.name || '—'}</span>
               </div>
+              {p.carrier && (
+                <div className="flex justify-between">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{t('packages.carrier')}</span>
+                  <span>{CARRIER_LABELS[p.carrier] || p.carrier}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400">{t('packages.weight')}</span>
                 <span>{p.weight} lbs</span>

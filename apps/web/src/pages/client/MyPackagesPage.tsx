@@ -7,15 +7,21 @@ import { StatusBadge } from '../../components/ui/Badge';
 import { useLiveRefresh } from '../../hooks/useSocketEvents';
 import { formatDate } from '../../utils/formatDate';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { CARRIER_LABELS } from '@courier/constants';
 
 export default function MyPackagesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [packages, setPackages] = useState<any[]>([]);
+  const [balanceSummary, setBalanceSummary] = useState<{ totalBalance: number; currency: string } | null>(null);
 
   const load = useCallback(async () => {
     const api = (await import('../../config/axios')).default;
-    api.get('/client/packages').then((r) => setPackages(r.data.data || []));
+    const res = await api.get('/client/packages');
+    setPackages(res.data.data || []);
+    if (res.data.summary) {
+      setBalanceSummary(res.data.summary);
+    }
   }, []);
 
   useEffect(() => {
@@ -27,6 +33,17 @@ export default function MyPackagesPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">{t('nav.myPackages')}</h1>
+      {balanceSummary && balanceSummary.totalBalance > 0 && (
+        <Card>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">💰</span>
+            <div>
+              <p className="text-sm text-gray-500">{t('client.balanceSummary')}</p>
+              <p className="text-lg font-bold">{t('client.totalBalance')}: {formatCurrency(balanceSummary.totalBalance, balanceSummary.currency)}</p>
+            </div>
+          </div>
+        </Card>
+      )}
       <Card padding={false}>
         <Table
           headers={[t('packages.tracking'), t('packages.description'), t('packages.weight'), t('common.status'), t('common.date')]}
@@ -48,6 +65,12 @@ export default function MyPackagesPage() {
                 <span className="text-xs text-gray-500 dark:text-gray-400">{t('packages.weight')}</span>
                 <span>{p.weight} lbs</span>
               </div>
+              {p.carrier && p.carrier !== 'other' && (
+                <div className="flex justify-between">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{t('packages.carrier')}</span>
+                  <span>{CARRIER_LABELS[p.carrier] || p.carrier}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center">
                 <span className="text-xs text-gray-500 dark:text-gray-400">{t('common.status')}</span>
                 <span className="flex items-center gap-2">

@@ -13,6 +13,7 @@ const {
   CLIENT_CODE_PATTERN,
   DEVICE_PLATFORMS,
   PUSH_TOKEN_PATTERN,
+  CARRIERS,
 } = require('@courier/constants');
 
 const PACKAGE_STATUSES = [
@@ -144,6 +145,7 @@ const updateCustomerSchema = createCustomerSchema.partial();
 // --- Package (package.schema.js) ---
 const createPackageSchema = z.object({
   customerId: z.string().min(1, 'Customer is required'),
+  carrier: z.enum(CARRIERS).optional(),
   carrierTracking: z.string().max(100).optional(),
   description: z.string().min(1, 'Description is required').max(500),
   weight: z.number().positive('Weight must be positive').max(500),

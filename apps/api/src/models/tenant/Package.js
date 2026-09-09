@@ -17,6 +17,7 @@ const packageSchema = new mongoose.Schema(
   {
     tracking: { type: String, required: true, unique: true },
     carrierTracking: { type: String, trim: true },
+    carrier: { type: String, enum: ['fedex', 'ups', 'usps', 'dhl', 'other'], default: 'other', trim: true },
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
     description: { type: String, required: true, trim: true },
     weight: { type: Number, required: true, min: 0, max: 500 },
@@ -43,6 +44,7 @@ const packageSchema = new mongoose.Schema(
 );
 
 packageSchema.index({ carrierTracking: 1 });
+packageSchema.index({ carrier: 1 });
 packageSchema.index({ customerId: 1, status: 1 });
 packageSchema.index({ status: 1, branchId: 1 });
 packageSchema.index({ createdAt: -1 });

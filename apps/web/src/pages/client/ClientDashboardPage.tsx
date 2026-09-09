@@ -6,6 +6,7 @@ import { Card, StatCard } from '../../components/ui/Card';
 import { StatusBadge } from '../../components/ui/Badge';
 import { useLiveRefresh } from '../../hooks/useSocketEvents';
 import { formatRelative } from '../../utils/formatDate';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 export default function ClientDashboardPage() {
   const { t } = useTranslation();
@@ -33,8 +34,8 @@ export default function ClientDashboardPage() {
     return (
       <div className="space-y-4">
         <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-2xl animate-pulse" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 animate-pulse">
               <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-3" />
               <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-16" />
@@ -67,7 +68,7 @@ export default function ClientDashboardPage() {
       {!error && (
         <>
           {/* Stat cards with icons */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <Link to="/client/packages" className="block">
               <StatCard label={t('client.inTransit')} value={data?.inTransit || 0} icon="🚚" />
             </Link>
@@ -79,6 +80,9 @@ export default function ClientDashboardPage() {
             </Link>
             <Link to="/client/packages" className="block">
               <StatCard label={t('client.total')} value={data?.totalPackages || 0} icon="📋" />
+            </Link>
+            <Link to="/client/packages" className="block">
+              <StatCard label={t('client.totalBalance')} value={formatCurrency(data?.totalBalance || 0, data?.currency)} icon="💰" />
             </Link>
           </div>
 

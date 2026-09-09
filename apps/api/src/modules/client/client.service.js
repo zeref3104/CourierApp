@@ -1,6 +1,7 @@
 const BaseRepository = require('../../repositories/base/base.repository');
 const NotFoundException = require('../../exceptions/NotFoundException');
 const HttpException = require('../../exceptions/HttpException');
+const { TERMINAL_STATUSES } = require('@courier/constants');
 
 const MAX_DEVICE_TOKENS = 5;
 
@@ -11,7 +12,7 @@ class ClientService {
   }
 
   async getDashboard(customerId) {
-    const [totalPackages, inTransit, delivered, readyForPickup, lastFive, logoSetting, nameSetting] = await Promise.all([
+    const [totalPackages, inTransit, delivered, readyForPickup, lastFive, logoSetting, nameSetting, currencySetting] = await Promise.all([
       this.packageRepo.count({ customerId }),
       this.models.Package.countDocuments({
         customerId,
@@ -26,6 +27,12 @@ class ClientService {
         .lean(),
       this.models.Setting.findOne({ key: 'logo_url' }).lean(),
       this.models.Setting.findOne({ key: 'company_name' }).lean(),
+      this.models.Setting.findOne({ key: 'currency' }).lean(),
+    ]);
+
+    const balanceResult = await this.models.Package.aggregate([
+      { $match: { customerId: customerId instanceof require('mongoose').Types.ObjectId ? customerId : new (require('mongoose').Types.ObjectId)(customerId), isPaid: { $ne: true }, status: { $nin: TERMINAL_STATUSES } } },
+      { $group: { _id: null, totalBalance: { $sum: '$total' } } },
     ]);
 
     return {
@@ -34,6 +41,8 @@ class ClientService {
       delivered,
       readyForPickup,
       lastTracking: lastFive,
+      totalBalance: balanceResult.length > 0 ? balanceResult[0].totalBalance : 0,
+      currency: currencySetting?.value || 'DOP',
       logoUrl: logoSetting?.value || null,
       companyName: nameSetting?.value || null,
     };
@@ -52,7 +61,7 @@ class ClientService {
       page: Number(page),
       limit: Number(limit),
       sort: { createdAt: -1 },
-      select: 'tracking carrierTracking description weight total status createdAt deliveredAt photos',
+      select: 'tracking carrier carrierTracking description weight total status createdAt deliveredAt photos isPaid',
     });
 
     // Amount-to-pay disclosure (client-panel-specs): expose total + currency
@@ -65,13 +74,25 @@ class ClientService {
       if (currencySetting) currency = currencySetting.value;
     }
 
+    // Compute balance summary across ALL customer packages (not just current page)
+    const balancePipeline = [
+      { $match: { customerId, isPaid: { $ne: true }, status: { $nin: TERMINAL_STATUSES } } },
+      { $group: { _id: null, totalBalance: { $sum: '$total' }, count: { $sum: 1 } } },
+    ];
+    const balanceResult = await this.models.Package.aggregate(balancePipeline);
+    const totalBalance = balanceResult.length > 0 ? balanceResult[0].totalBalance : 0;
+    const balanceCount = balanceResult.length > 0 ? balanceResult[0].count : 0;
+
     for (const pkg of result.data) {
       if (pkg.status === 'disponible') {
         pkg.amountToPay = pkg.total;
         pkg.currency = currency;
       }
       delete pkg.total;
+      delete pkg.isPaid;
     }
+
+    result.summary = { totalBalance, currency, count: balanceCount };
 
     return result;
   }

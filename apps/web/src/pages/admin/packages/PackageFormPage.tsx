@@ -9,6 +9,7 @@ import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import CustomerSearchInput from '../../../components/ui/CustomerSearchInput';
+import { CARRIERS, CARRIER_LABELS } from '@courier/constants';
 
 export default function PackageFormPage() {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ export default function PackageFormPage() {
   const showBranchSelect = !user?.branchId;
   const [branches, setBranches] = useState<any[]>([]);
   const [form, setForm] = useState({
-    customerId: '', carrierTracking: '', description: '', weight: '',
+    customerId: '', carrier: 'other', carrierTracking: '', description: '', weight: '',
     declaredValue: '', notes: '', branchId: '',
   });
   const [loading, setLoading] = useState(false);
@@ -37,6 +38,7 @@ export default function PackageFormPage() {
     try {
       const res = await packageService.create({
         ...form,
+        carrier: form.carrier || undefined,
         branchId: form.branchId || undefined,
         weight: Number(form.weight),
         declaredValue: Number(form.declaredValue) || 0,
@@ -73,6 +75,18 @@ export default function PackageFormPage() {
               </select>
             </div>
           )}
+          <div>
+            <label className="block text-sm font-medium mb-1">{t('packages.carrier')}</label>
+            <select
+              value={form.carrier}
+              onChange={(e) => setForm({ ...form, carrier: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+            >
+              {CARRIERS.map((c) => (
+                <option key={c} value={c}>{CARRIER_LABELS[c]}</option>
+              ))}
+            </select>
+          </div>
           <Input label={t('packages.carrierTracking')} value={form.carrierTracking} onChange={(e) => setForm({ ...form, carrierTracking: e.target.value })} placeholder={t('packages.carrierTrackingPlaceholder')} />
           <Input label={t('packages.description')} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
           <Input label={t('packages.weightLabel')} type="number" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} required />

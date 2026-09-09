@@ -73,6 +73,23 @@ const CLIENT_CODE_PATTERN = '^[A-Z]{2,5}-\\d{6}$';
 const DEVICE_PLATFORMS = ['android', 'ios'];
 const PUSH_TOKEN_PATTERN = '^ExponentPushToken\\[[A-Za-z0-9_-]+\\]$';
 
+const CARRIERS = ['fedex', 'ups', 'usps', 'dhl', 'other'];
+
+const CARRIER_LABELS = {
+  fedex: 'FedEx',
+  ups: 'UPS',
+  usps: 'USPS',
+  dhl: 'DHL',
+  other: 'Other',
+};
+
+const CARRIER_TRACKING_URLS = {
+  fedex: 'https://www.fedex.com/fedextrack/?trknbr=',
+  ups: 'https://www.ups.com/track?tracknum=',
+  usps: 'https://tools.usps.com/go/TrackConfirmAction?tLabels=',
+  dhl: 'https://www.dhl.com/en/express/tracking.html?AWB=',
+};
+
 const TERMINAL_STATUSES = [PACKAGE_STATUSES.ENTREGADO, PACKAGE_STATUSES.CANCELADO, PACKAGE_STATUSES.EXTRAVIADO];
 const ACTIVE_STATUSES = [
   PACKAGE_STATUSES.RECIBIDO_MIAMI,
@@ -95,6 +112,9 @@ module.exports = {
   NOTIFICATION_CHANNELS,
   NOTIFICATION_TYPES,
   LICENSE_STATUSES,
+  CARRIERS,
+  CARRIER_LABELS,
+  CARRIER_TRACKING_URLS,
   TERMINAL_STATUSES,
   ACTIVE_STATUSES,
   CLIENT_CODE_PREFIX_PATTERN,
