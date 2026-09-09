@@ -30,19 +30,30 @@ function resolveStore() {
   });
 
   return new RedisStore({
-    // Default sendCommand: (args) => client.sendCommand(args),
     prefix: 'rl:',
   });
 }
 
 const store = resolveStore();
 
+/**
+ * Global limiter — generous ceiling for ALL /api/* routes.
+ * Prevents brute-force / DDoS while not blocking normal admin workflows
+ * (e.g. changing 20+ package statuses in a row).
+ *
+ * keyGenerator includes tenantId when present so different tenants
+ * get independent counters. Falls back to req.ip for unauthenticated routes.
+ */
 const globalLimiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.max,
   store,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => {
+    const tenantId = req.tenantId || req.user?.tenantId || '';
+    return tenantId ? `${req.ip}:${tenantId}` : req.ip;
+  },
   message: {
     success: false,
     error: {
@@ -52,6 +63,35 @@ const globalLimiter = rateLimit({
   },
 });
 
+/**
+ * Mutation limiter — separate bucket for write operations (POST, PUT, PATCH,
+ * DELETE). Prevents rapid-fire mutations from exhausting the global bucket
+ * while keeping reads unaffected.
+ *
+ * Default: 60 mutations per 15 min window per tenant+IP.
+ */
+const mutationLimiter = rateLimit({
+  windowMs: config.rateLimit.windowMs,
+  max: config.rateLimit.mutationMax || 60,
+  store,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const tenantId = req.tenantId || req.user?.tenantId || '';
+    return tenantId ? `mut:${req.ip}:${tenantId}` : `mut:${req.ip}`;
+  },
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT',
+      message: 'Too many write operations, please slow down',
+    },
+  },
+});
+
+/**
+ * Auth limiter — strict ceiling for login / refresh endpoints.
+ */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -67,4 +107,4 @@ const authLimiter = rateLimit({
   },
 });
 
-module.exports = { globalLimiter, authLimiter };
+module.exports = { globalLimiter, mutationLimiter, authLimiter };

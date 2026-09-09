@@ -150,8 +150,11 @@ export default function PackageDetailPage() {
                   <button
                     key={s}
                     onClick={async () => {
-                      await packageService.changeStatus(id!, s);
-                      window.location.reload();
+                      const res = await packageService.changeStatus(id!, s);
+                      // Update local state with the server response — no full reload needed
+                      setPkg(res.data);
+                      // Refresh history in background (non-blocking)
+                      packageService.getHistory(id!).then((h) => setHistory(h.data)).catch(() => {});
                     }}
                     className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >

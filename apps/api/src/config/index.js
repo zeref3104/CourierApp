@@ -38,7 +38,8 @@ const config = {
 
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
-    max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100,
+    max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 500,
+    mutationMax: parseInt(process.env.RATE_LIMIT_MUTATION_MAX, 10) || 60,
     redisUrl: process.env.REDIS_URL || '',
   },
 
@@ -48,7 +49,9 @@ const config = {
   trustProxy: process.env.TRUST_PROXY ? parseInt(process.env.TRUST_PROXY, 10) : 0,
 
   upload: {
-    dir: process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads'),
+    // Resolve to absolute path so multer destination always matches the
+    // express.static mount regardless of process CWD (Docker, PM2, etc.)
+    dir: path.resolve(process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads')),
   },
 
   cors: {

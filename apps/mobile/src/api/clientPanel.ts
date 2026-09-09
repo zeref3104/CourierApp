@@ -1,4 +1,4 @@
-import { api } from '@/lib/api';
+import { api, API_BASE_URL } from '@/lib/api';
 
 /**
  * Typed wrappers around the client panel endpoints (client-panel-specs delta):
@@ -90,7 +90,13 @@ export interface PackagesPage {
 /** GET /client/dashboard — the four stats + recent packages. */
 export async function fetchDashboard(): Promise<DashboardStats> {
   const { data } = await api.get<{ data: DashboardStats }>('/client/dashboard');
-  return data.data;
+  const stats = data.data;
+  // Resolve relative logo URL to absolute — React Native Image requires full URLs
+  if (stats.logoUrl && !stats.logoUrl.startsWith('http')) {
+    const origin = API_BASE_URL.replace(/\/api\/v\d+\/?$/, '');
+    stats.logoUrl = `${origin}${stats.logoUrl}`;
+  }
+  return stats;
 }
 
 /** GET /client/packages — paginated list with optional status filter. */

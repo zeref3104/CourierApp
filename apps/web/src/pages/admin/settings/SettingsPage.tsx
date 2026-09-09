@@ -55,7 +55,11 @@ export default function SettingsPage() {
           minimum_price: s.minimum_price?.toString() || '',
           tax_rate: s.tax_rate?.toString() || '',
         });
-        if (s.logo_url) setLogoUrl(s.logo_url);
+        if (s.logo_url) {
+          // Resolve relative URL against the API origin (same as after upload)
+          const origin = (api.defaults.baseURL || '').replace(/\/api\/v\d+\/?$/, '');
+          setLogoUrl(s.logo_url.startsWith('http') ? s.logo_url : `${origin}${s.logo_url}`);
+        }
       }).catch(() => {});
     });
   }, []);

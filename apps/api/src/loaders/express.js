@@ -5,7 +5,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const compression = require('compression');
 const morganMiddleware = require('../logs/morgan');
-const { globalLimiter } = require('../middlewares/rateLimiter');
+const { globalLimiter, mutationLimiter } = require('../middlewares/rateLimiter');
 const config = require('../config');
 
 function init({ app }) {
@@ -24,14 +24,23 @@ function init({ app }) {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
 
-  // Serve uploaded files
-  app.use('/uploads', express.static(path.join(__dirname, '..', '..', 'uploads')));
+  // Serve uploaded files — use the same resolved absolute path as the upload middleware
+  app.use('/uploads', express.static(path.join(config.upload.dir)));
 
   // Logging
   app.use(morganMiddleware);
 
-  // Rate limiting
+  // Rate limiting — global ceiling for all /api/* reads + writes
   app.use('/api/', globalLimiter);
+
+  // Separate bucket for mutating methods (POST/PUT/PATCH/DELETE) so that
+  // rapid-fire status changes don't exhaust the read+write global budget.
+  app.use('/api/', (req, res, next) => {
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+      return mutationLimiter(req, res, next);
+    }
+    next();
+  });
 
   // Trust the reverse proxy hops declared by the operator (for accurate client
   // IPs in rate limiting and logs). Defaults to 0: with no proxy in front we
