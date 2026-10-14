@@ -40,14 +40,18 @@ const superadminLoginSchema = z.object({
 
 const refreshTokenSchema = z.object({});
 
+// Shared password strength rules — the single source of truth for every
+// password field (change, register, reset) so the rules can never drift.
+const passwordRules = z
+  .string()
+  .min(8, 'Password must be at least 8 characters')
+  .regex(/[A-Z]/, 'Must contain an uppercase letter')
+  .regex(/[a-z]/, 'Must contain a lowercase letter')
+  .regex(/[0-9]/, 'Must contain a number');
+
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
-  newPassword: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(/[A-Z]/, 'Must contain an uppercase letter')
-    .regex(/[a-z]/, 'Must contain a lowercase letter')
-    .regex(/[0-9]/, 'Must contain a number'),
+  newPassword: passwordRules,
 });
 
 // --- User (user.schema.js) ---
@@ -55,7 +59,7 @@ const createUserSchema = z.object({
   name: z.string().min(2).max(50),
   lastName: z.string().min(2).max(50).optional(),
   email: z.string().email(),
-  password: z.string().min(8).regex(/[A-Z]/).regex(/[a-z]/).regex(/[0-9]/),
+  password: passwordRules,
   phone: z.string().optional(),
   roleId: z.string().min(1, 'Role is required'),
   branchId: z.string().optional(),
@@ -275,13 +279,32 @@ const registerClientSchema = z.object({
   phone: z.string().min(7, 'Phone must be at least 7 characters').max(20),
   document: z.string().max(30).optional(),
   email: z.string().email('Invalid email format'),
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(/[A-Z]/, 'Must contain an uppercase letter')
-    .regex(/[a-z]/, 'Must contain a lowercase letter')
-    .regex(/[0-9]/, 'Must contain a number'),
+  password: passwordRules,
   otpCode,
+});
+
+// --- Password recovery (password-recovery spec, tasks 1.1) ---
+// POST /auth/forgot-password — email only, with optional lang and optional
+// global client code (ClientEmailIndex can map one email to 2+ companies).
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  lang: z.enum(['es', 'en', 'fr']).optional(),
+  code: z
+    .string()
+    .regex(new RegExp(CLIENT_CODE_PATTERN), 'Code must be a valid client code (e.g. CS-000001)')
+    .optional(),
+});
+
+// POST /auth/reset-password — verifies the purpose-scoped OTP and applies the
+// new password (strength rules shared with every other password field).
+const resetPasswordSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  code: z
+    .string()
+    .regex(new RegExp(CLIENT_CODE_PATTERN), 'Code must be a valid client code (e.g. CS-000001)')
+    .optional(),
+  otpCode,
+  newPassword: passwordRules,
 });
 
 // --- Client login (code | email) + body refresh (client-code-login spec,
@@ -336,6 +359,7 @@ module.exports = {
   superadminLoginSchema,
   refreshTokenSchema,
   changePasswordSchema,
+  passwordRules,
   createUserSchema,
   updateUserSchema,
   createDeliverySchema,
@@ -363,4 +387,6 @@ module.exports = {
   clientCodeLoginSchema,
   clientRefreshSchema,
   deviceTokenSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 };
