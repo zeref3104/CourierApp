@@ -130,6 +130,12 @@ export default function LoginPage() {
           {...register('password')}
         />
 
+        <div className="flex justify-end">
+          <Link to="/auth/forgot-password" className="text-sm text-primary-600 hover:underline">
+            {t('auth.forgot.link')}
+          </Link>
+        </div>
+
         {error && (
           <div className="bg-red-50 dark:bg-red-900/50 text-red-600 dark:text-red-400 text-sm p-3 rounded-lg">
             {error}
