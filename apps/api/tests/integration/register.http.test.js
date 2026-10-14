@@ -147,6 +147,9 @@ beforeAll(async () => {
   masterConnection.model('License', require('../../src/models/master/License'));
   masterConnection.model('Plan', require('../../src/models/master/Plan'));
   masterConnection.model('OtpCode', require('../../src/models/master/OtpCode'));
+  // The register flow indexes the client email → tenant (production registers
+  // this in loaders/mongoose.js); without it the flow throws MissingSchemaError.
+  masterConnection.model('ClientEmailIndex', require('../../src/models/master/ClientEmailIndex'));
   require('../../src/models/tenant/Customer')(tenantConnection);
   require('../../src/models/tenant/Branch')(tenantConnection);
   require('../../src/models/tenant/Role')(tenantConnection);

@@ -165,6 +165,8 @@ function buildApp() {
       PackageHistory: tenantConnection.model('PackageHistory'),
       Customer: tenantConnection.model('Customer'),
       Branch: tenantConnection.model('Branch'),
+      // The disponible amountToPay path reads the tenant currency setting.
+      Setting: tenantConnection.model('Setting'),
     };
     next();
   }, clientRoutes);
@@ -199,12 +201,16 @@ beforeAll(async () => {
   masterConnection.model('OtpCode', require('../../src/models/master/OtpCode'));
   masterConnection.model('SuperAdmin', require('../../src/models/master/SuperAdmin'));
   masterConnection.model('TenantUserIndex', require('../../src/models/master/TenantUserIndex'));
+  // The register flow indexes the client email → tenant (production registers
+  // this in loaders/mongoose.js); without it the flow throws MissingSchemaError.
+  masterConnection.model('ClientEmailIndex', require('../../src/models/master/ClientEmailIndex'));
   require('../../src/models/tenant/Customer')(tenantConnection);
   require('../../src/models/tenant/Branch')(tenantConnection);
   require('../../src/models/tenant/Role')(tenantConnection);
   require('../../src/models/tenant/User')(tenantConnection);
   require('../../src/models/tenant/Package')(tenantConnection);
   require('../../src/models/tenant/PackageHistory')(tenantConnection);
+  require('../../src/models/tenant/Setting')(tenantConnection);
 
   await Promise.all([
     masterConnection.model('Company').init(),
