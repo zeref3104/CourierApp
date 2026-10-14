@@ -534,6 +534,162 @@ class AuthService {
   }
 
   /**
+   * Self-service password recovery — FORGOT step (password-recovery spec,
+   * design D3/D4). Resolves the email against the master ClientEmailIndex and
+   * always answers the SAME generic body:
+   * - 0 matches  -> stage the code with dispatch:false (no email) — an unknown
+   *   email still gets a TTL'd record and identical cooldown behavior, so the
+   *   response and side effects mirror the known path (anti-enumeration R1)
+   * - 1 match    -> stage + dispatch the reset email
+   * - 2+ matches -> 409 asking for the global client code (exact clientLogin
+   *   message, R2) unless a code pins one company; a mismatched/unknown code
+   *   falls back to the generic body with no dispatch
+   *
+   * @returns {Promise<{sent: boolean, resendAfter: number}>} identical in every
+   *   non-409 path (the controller adds the fixed response floor).
+   */
+  async forgotPassword({ email, lang, code, masterConnection }) {
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    // Throws 409 for ambiguous emails without a code; null means "nothing
+    // resolved" and must NOT change the generic answer — only the dispatch flag.
+    const target = await this._resolveRecoveryTarget({
+      email: normalizedEmail,
+      code,
+      masterConnection,
+    });
+
+    return otpService.sendOtp({
+      email: normalizedEmail,
+      lang,
+      masterConnection,
+      purpose: otpService.OTP_PURPOSE_PASSWORD_RESET,
+      dispatch: target !== null,
+    });
+  }
+
+  /**
+   * Self-service password recovery — RESET step (password-recovery spec,
+   * design D1/D4/D6). Verifies the purpose-scoped OTP, then on the resolved
+   * client User: replaces the password (bcrypt pre-save hook), clears
+   * failedLoginAttempts/lockedUntil, sets mustChangePassword false and nulls
+   * refreshToken + previousRefreshTokenHash (kills the whole session chain,
+   * R6). The OTP is consumed ONLY after user.save() succeeds (D1): a failed
+   * save leaves the code usable until TTL instead of stranding the recovery.
+   *
+   * Every failure mode — unresolvable email, mismatched code, bad/expired/
+   * exhausted/consumed OTP, missing account — answers the IDENTICAL generic
+   * 422 (never 404, never reveals existence).
+   *
+   * @returns {Promise<{reset: true}>}
+   */
+  async resetPassword({ email, code, otpCode, newPassword, masterConnection }) {
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    const target = await this._resolveRecoveryTarget({
+      email: normalizedEmail,
+      code,
+      masterConnection,
+      withConnection: true,
+    });
+    if (!target) throw new UnprocessableEntityException('Invalid or expired code');
+    const { tenantConnection } = target;
+
+    let otpDoc;
+    try {
+      otpDoc = await this._verifyStagedOtp({
+        email: normalizedEmail,
+        code: otpCode,
+        purpose: otpService.OTP_PURPOSE_PASSWORD_RESET,
+        masterConnection,
+      });
+    } catch (err) {
+      // Normalize EVERY OTP failure (missing/expired/exhausted/invalid) to the
+      // same message so the answer stays indistinguishable (anti-enumeration).
+      if (err instanceof UnprocessableEntityException) {
+        throw new UnprocessableEntityException('Invalid or expired code');
+      }
+      throw err;
+    }
+
+    const Customer = tenantConnection.model('Customer');
+    const User = tenantConnection.model('User');
+    const customer = await Customer.findOne({ email: normalizedEmail });
+    const user = customer
+      ? await User.findOne({ clientId: customer._id, isClient: true })
+      : null;
+    if (!user) throw new UnprocessableEntityException('Invalid or expired code');
+
+    // R5: password + lockout + forced-change flag; R6: the refresh-token chain
+    // (current + previous) so a stolen session dies with the reset (design D6).
+    user.password = newPassword;
+    user.failedLoginAttempts = 0;
+    user.lockedUntil = null;
+    user.mustChangePassword = false;
+    user.refreshToken = null;
+    user.previousRefreshTokenHash = null;
+    await user.save();
+
+    // D1: consume only after the password actually persisted.
+    otpDoc.consumedAt = new Date();
+    await otpDoc.save();
+
+    return { reset: true };
+  }
+
+  /**
+   * Resolve the client account targeted by a recovery flow (design D4) against
+   * the master ClientEmailIndex (per-company unique, so one email may exist in
+   * 2+ companies):
+   * - 0 matches  -> null (caller maps it to the generic answer)
+   * - 1 match    -> the company (tenant connection only when the caller needs
+   *   it — the forgot path must not open connections the unknown path skips)
+   * - 2+ matches -> ConflictException with the exact clientLogin message unless
+   *   a global client code pins ONE of the indexed companies; an unknown or
+   *   mismatched code resolves to null (generic failure, no existence leak)
+   *
+   * @returns {Promise<{company: Object, tenantConnection: Object|null}|null>}
+   */
+  async _resolveRecoveryTarget({ email, code, masterConnection, withConnection = false }) {
+    const ClientEmailIndex = masterConnection.model('ClientEmailIndex');
+    const entries = await ClientEmailIndex.find({ email, isActive: true });
+
+    if (entries.length === 0) return null;
+
+    if (entries.length === 1) {
+      const company = await masterConnection.model('Company').findById(entries[0].companyId);
+      if (!company) return null;
+      if (!withConnection) return { company, tenantConnection: null };
+      const tenantConnection = await connectionManager.getConnection({
+        id: company._id,
+        slug: company.slug,
+        dbName: company.databaseName,
+        plan: company.planId,
+      });
+      return { company, tenantConnection };
+    }
+
+    if (!code) {
+      throw new ConflictException(
+        'This email is linked to multiple companies. Sign in with your client code instead.'
+      );
+    }
+
+    let resolved;
+    try {
+      resolved = await this.resolveTenantByCode(code, masterConnection);
+    } catch {
+      // Unknown/invalid/inactive code -> generic failure, never 404 (R2/D4).
+      return null;
+    }
+
+    const linked = entries.some(
+      (entry) => String(entry.companyId) === String(resolved.company._id)
+    );
+    return linked ? resolved : null;
+  }
+
+  /**
    * Self-service client registration (client-registration spec + auth-specs
    * delta §2.2, design D5/D7/D8). Creates the Customer (global {PREFIX}-{SEQ}
    * code via the master counter) and its linked isClient User atomically, then
@@ -621,7 +777,7 @@ class AuthService {
 
     // 3. The submitted OTP must be valid for the email BEFORE any account is
     // created (spec: no Customer/User may exist on an OTP failure).
-    const otpDoc = await this._verifyRegistrationOtp({
+    const otpDoc = await this._verifyStagedOtp({
       email: normalizedEmail,
       code: otpCode,
       masterConnection,
@@ -751,16 +907,18 @@ class AuthService {
   }
 
   /**
-   * Validate a registration OTP for an email. Enforces expiry, the 5-attempt
-   * lockout, and single-use (consumedAt). A mismatched code increments the
-   * attempt counter; a matching code marks verifiedAt but is NOT consumed yet —
-   * consumption happens only after the Customer/User pair persists, so a later
-   * failure (e.g. duplicate email 409) leaves the code reusable.
+   * Validate a staged OTP for an email (register + password reset — design D5).
+   * Keyed by `${email}:${purpose}` (default 'register' keeps the registration
+   * call site unchanged). Enforces expiry, the 5-attempt lockout, and
+   * single-use (consumedAt); a matching code marks verifiedAt but is NOT
+   * consumed here — consumption happens only after the caller's critical write
+   * persists (register pair creation / password save), so a later failure
+   * leaves the code reusable (design D1/D8).
    * @returns {Promise<Object>} the OtpCode document (for the caller to consume)
    */
-  async _verifyRegistrationOtp({ email, code, masterConnection }) {
+  async _verifyStagedOtp({ email, code, masterConnection, purpose = otpService.OTP_PURPOSE_REGISTER }) {
     const OtpCode = masterConnection.model('OtpCode');
-    const doc = await OtpCode.findOne({ key: otpService.buildKey(email) });
+    const doc = await OtpCode.findOne({ key: otpService.buildKey(email, purpose) });
     if (!doc) throw new UnprocessableEntityException('OTP not found or expired');
     if (doc.expiresAt.getTime() < Date.now()) {
       throw new UnprocessableEntityException('OTP expired');
