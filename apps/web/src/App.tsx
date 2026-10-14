@@ -13,6 +13,7 @@ import ClientLayout from './components/layout/ClientLayout';
 import LoginPage from './pages/auth/LoginPage';
 import ChangePasswordPage from './pages/auth/ChangePasswordPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import DashboardPage from './pages/admin/DashboardPage';
 import CompaniesPage from './pages/admin/companies/CompaniesPage';
 import CreateCompanyPage from './pages/admin/companies/CreateCompanyPage';
@@ -72,6 +73,7 @@ function App() {
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
+        <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/auth/change-password" element={<ChangePasswordPage />} />
       </Route>
 

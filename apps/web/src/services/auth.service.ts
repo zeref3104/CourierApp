@@ -33,4 +33,15 @@ export const authService = {
 
   registerClient: (data: RegisterClientRequest) =>
     api.post<ApiResponse<ClientLoginResponse>>('/auth/client/register', data).then((r) => r.data),
+
+  // Password recovery (password-recovery spec): both endpoints are public and
+  // pre-tenant. The forgot answer is generic by design (anti-enumeration) —
+  // `data.sent` is true even when no account matched the email.
+  forgotPassword: (data: { email: string; lang?: string; code?: string }) =>
+    api
+      .post<ApiResponse<{ sent: boolean; resendAfter: number }>>('/auth/forgot-password', data)
+      .then((r) => r.data),
+
+  resetPassword: (data: { email: string; code?: string; otpCode: string; newPassword: string }) =>
+    api.post<ApiResponse<{ reset: boolean }>>('/auth/reset-password', data).then((r) => r.data),
 };
