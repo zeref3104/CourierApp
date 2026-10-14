@@ -105,6 +105,20 @@ class EmailService {
   }
 
   /**
+   * Send a password-reset OTP verification code (password-recovery spec).
+   * Uses the dedicated otpPasswordReset template (distinct subject from the
+   * registration OTP, same {{code}} placeholder) in es/en/fr.
+   */
+  async sendPasswordResetOtp(email, code, lang = DEFAULT_LANGUAGE) {
+    const templates = emailTemplates[lang] || emailTemplates.es;
+
+    const subject = templates.otpPasswordReset.subject;
+    const text = interpolate(templates.otpPasswordReset.body, { code });
+
+    return this.sendNotification({ to: email, subject, text });
+  }
+
+  /**
    * Send delivery completion notification.
    */
   async sendDeliveryNotification(email, tracking, receiverName, customerName, lang = DEFAULT_LANGUAGE) {
