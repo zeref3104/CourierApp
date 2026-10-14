@@ -14,6 +14,7 @@ const UnprocessableEntityException = require('../../src/exceptions/Unprocessable
 
 jest.mock('../../src/services/notifications/email.service', () => ({
   sendOtpCode: jest.fn().mockResolvedValue({ messageId: 'logged-1' }),
+  sendPasswordResetOtp: jest.fn().mockResolvedValue({ messageId: 'logged-2' }),
 }));
 
 function sha256(value) {
@@ -171,5 +172,104 @@ describe('otpService.verifyOtp', () => {
 
     await expect(otpService.verifyOtp({ email: 'nadie@correo.com', code: '123456', masterConnection }))
       .rejects.toBeInstanceOf(UnprocessableEntityException);
+  });
+});
+
+/**
+ * Password-recovery purpose parameterization (forgot-password spec R3/R4,
+ * design D5): keys become `${email}:${purpose}`, the purpose picks the email
+ * template, and `dispatch:false` stages without emailing (anti-enumeration D3).
+ */
+describe('otpService purpose parameterization', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('stages register and password_reset codes under distinct purpose keys', async () => {
+    const { masterConnection, OtpCode } = mockMaster(null);
+
+    await otpService.sendOtp({ email: 'cliente@correo.com', masterConnection });
+    await otpService.sendOtp({ email: 'cliente@correo.com', masterConnection, purpose: 'password_reset' });
+
+    expect(OtpCode.findOne.mock.calls.map((c) => c[0].key)).toEqual([
+      'cliente@correo.com:register',
+      'cliente@correo.com:password_reset',
+    ]);
+    const keys = OtpCode.findOneAndUpdate.mock.calls.map((c) => c[0].key);
+    expect(keys).toEqual(['cliente@correo.com:register', 'cliente@correo.com:password_reset']);
+    expect(keys[0]).not.toBe(keys[1]);
+  });
+
+  test('picks the email sender from the purpose: register -> sendOtpCode, password_reset -> sendPasswordResetOtp', async () => {
+    const register = mockMaster(null);
+    await otpService.sendOtp({ email: 'cliente@correo.com', lang: 'es', masterConnection: register.masterConnection });
+    expect(emailService.sendOtpCode).toHaveBeenCalledTimes(1);
+    expect(emailService.sendPasswordResetOtp).not.toHaveBeenCalled();
+
+    jest.clearAllMocks();
+    const reset = mockMaster(null);
+    await otpService.sendOtp({ email: 'cliente@correo.com', lang: 'fr', masterConnection: reset.masterConnection, purpose: 'password_reset' });
+    expect(emailService.sendPasswordResetOtp).toHaveBeenCalledTimes(1);
+    expect(emailService.sendPasswordResetOtp).toHaveBeenCalledWith('cliente@correo.com', expect.stringMatching(/^\d{6}$/), 'fr');
+    expect(emailService.sendOtpCode).not.toHaveBeenCalled();
+  });
+
+  test('dispatch:false stages the code, sends no email, and returns the SAME body as a dispatched send', async () => {
+    const { masterConnection, OtpCode } = mockMaster(null);
+
+    const result = await otpService.sendOtp({
+      email: 'desconocido@correo.com',
+      masterConnection,
+      purpose: 'password_reset',
+      dispatch: false,
+    });
+
+    // staged: upsert ran under the purpose key (unknown emails still get a
+    // TTL'd record and identical cooldowns — design D3)
+    expect(OtpCode.findOneAndUpdate).toHaveBeenCalledTimes(1);
+    expect(OtpCode.findOneAndUpdate.mock.calls[0][0]).toEqual({ key: 'desconocido@correo.com:password_reset' });
+    // but nothing left the building
+    expect(emailService.sendOtpCode).not.toHaveBeenCalled();
+    expect(emailService.sendPasswordResetOtp).not.toHaveBeenCalled();
+
+    // identical generic body (anti-enumeration: known/unknown must deep-equal)
+    jest.clearAllMocks();
+    const dispatched = mockMaster(null);
+    const known = await otpService.sendOtp({
+      email: 'conocido@correo.com',
+      masterConnection: dispatched.masterConnection,
+      purpose: 'password_reset',
+    });
+    expect(result).toEqual(known);
+  });
+
+  test('a live password_reset cooldown blocks resends for THAT purpose key with 429', async () => {
+    const recent = mockOtpDoc({ cooldownUntil: new Date(Date.now() + 30 * 1000) });
+    const { masterConnection, OtpCode } = mockMaster(recent);
+
+    await expect(
+      otpService.sendOtp({ email: 'cliente@correo.com', masterConnection, purpose: 'password_reset' })
+    ).rejects.toBeInstanceOf(TooManyRequestsException);
+
+    // the cooldown lookup reads the purpose-scoped key, never the register one
+    expect(OtpCode.findOne).toHaveBeenCalledWith({ key: 'cliente@correo.com:password_reset' });
+    expect(emailService.sendPasswordResetOtp).not.toHaveBeenCalled();
+    expect(OtpCode.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  test('verifyOtp reads the purpose-scoped record and leaves the other purpose untouched', async () => {
+    const doc = mockOtpDoc();
+    const { masterConnection, OtpCode } = mockMaster(doc);
+
+    const result = await otpService.verifyOtp({
+      email: 'cliente@correo.com',
+      code: '123456',
+      masterConnection,
+      purpose: 'password_reset',
+    });
+
+    expect(result).toEqual({ verified: true });
+    expect(OtpCode.findOne).toHaveBeenCalledWith({ key: 'cliente@correo.com:password_reset' });
+    expect(OtpCode.findOne).not.toHaveBeenCalledWith({ key: 'cliente@correo.com:register' });
   });
 });
