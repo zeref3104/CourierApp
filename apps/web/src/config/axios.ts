@@ -6,6 +6,7 @@ import {
   loadClientRefreshToken,
   saveClientRefreshToken,
 } from '../utils/clientAuthStorage';
+import { clearApiCache } from '../utils/apiCache';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'https://api.charmeurexpress.us/api/v1',
@@ -83,6 +84,10 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         clearClientRefreshToken();
+        // Purge the SW API cache here too: this path hard-navigates to
+        // /login right after dispatch, so don't rely solely on the store's
+        // logout subscriber to issue the deletion (cross-user leak offline).
+        clearApiCache();
         store.dispatch(logout());
         window.location.href = '/login';
         return Promise.reject(refreshError);

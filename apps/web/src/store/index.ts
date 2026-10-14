@@ -5,6 +5,7 @@ import packageReducer from './slices/packageSlice';
 import customerReducer from './slices/customerSlice';
 import notificationReducer from './slices/notificationSlice';
 import { clearClientRefreshToken } from '../utils/clientAuthStorage';
+import { clearApiCache } from '../utils/apiCache';
 
 // Load persisted auth from localStorage
 function loadPersistedAuth() {
@@ -45,9 +46,15 @@ export const store = configureStore({
 
 // Persist auth on every change
 let previousAuth: string | null = null;
+// Tracks the authenticated -> unauthenticated transition so one-time logout
+// side effects (the api-cache purge) don't run on every dispatch while logged
+// out. Initialized from the same persisted payload as preloadedState so a
+// logout right after page load (before any other dispatch) still counts.
+let wasAuthenticated = persisted !== null;
 store.subscribe(() => {
   const { auth } = store.getState();
   if (auth.isAuthenticated) {
+    wasAuthenticated = true;
     const current = JSON.stringify({ user: auth.user, accessToken: auth.accessToken });
     if (current !== previousAuth) {
       localStorage.setItem('auth', current);
@@ -55,9 +62,17 @@ store.subscribe(() => {
     }
   } else {
     localStorage.removeItem('auth');
-    // Every logout path (Navbar, ClientLayout, axios refresh failure) funnels
-    // through this subscriber, so the client refresh token is wiped here.
+    // Every logout path (Navbar, ClientLayout, ChangePasswordPage, axios
+    // refresh failure) funnels through this subscriber, so the client refresh
+    // token is wiped here and — on the actual logout transition — the service
+    // worker's api-cache is purged. Workbox keys that cache by URL only, so
+    // without this an offline session could replay the previous user's
+    // authenticated API responses to the next user.
     clearClientRefreshToken();
+    if (wasAuthenticated) {
+      wasAuthenticated = false;
+      clearApiCache();
+    }
     previousAuth = null;
   }
 });

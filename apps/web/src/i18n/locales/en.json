@@ -450,5 +450,9 @@
   "scanner.error": "Error looking up package",
   "scanner.scanAgain": "Scan another",
   "scanner.close": "Close",
-  "scanner.trackingScanned": "Scanned code"
+  "scanner.trackingScanned": "Scanned code",
+  "pwa.offlineReady": "App is ready to work offline.",
+  "pwa.offlineReadyAction": "Got it",
+  "pwa.updateAvailable": "A new version is available.",
+  "pwa.updateAction": "Reload"
 }

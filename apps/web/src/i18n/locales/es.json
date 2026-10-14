@@ -450,5 +450,9 @@
   "scanner.error": "Error al buscar el paquete",
   "scanner.scanAgain": "Escanear otro",
   "scanner.close": "Cerrar",
-  "scanner.trackingScanned": "Código escaneado"
+  "scanner.trackingScanned": "Código escaneado",
+  "pwa.offlineReady": "App listo para funcionar sin conexión.",
+  "pwa.offlineReadyAction": "Entendido",
+  "pwa.updateAvailable": "Hay una nueva versión disponible.",
+  "pwa.updateAction": "Recargar"
 }

@@ -450,5 +450,9 @@
   "scanner.error": "Erreur de recherche du colis",
   "scanner.scanAgain": "Scanner un autre",
   "scanner.close": "Fermer",
-  "scanner.trackingScanned": "Code scanné"
+  "scanner.trackingScanned": "Code scanné",
+  "pwa.offlineReady": "L'application est prête à fonctionner hors ligne.",
+  "pwa.offlineReadyAction": "Compris",
+  "pwa.updateAvailable": "Une nouvelle version est disponible.",
+  "pwa.updateAction": "Recharger"
 }

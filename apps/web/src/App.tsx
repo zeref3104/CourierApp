@@ -41,6 +41,7 @@ import ClientProfilePage from './pages/client/ClientProfilePage';
 
 import ProtectedRoute from './router/ProtectedRoute';
 import { useSocket } from './hooks/useSocket';
+import PwaUpdatePrompt from './components/PwaUpdatePrompt';
 
 /** Internal component that activates socket.io when authenticated. */
 function SocketInit() {
@@ -65,6 +66,7 @@ function App() {
   return (
     <>
       <SocketInit />
+      <PwaUpdatePrompt />
       <Routes>
       {/* Auth */}
       <Route element={<AuthLayout />}>

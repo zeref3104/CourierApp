@@ -5,6 +5,7 @@ import { toggleTheme, openSidebar } from '../../store/slices/uiSlice';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { logout } from '../../store/slices/authSlice';
 import { authService } from '../../services/auth.service';
+import { clearApiCache } from '../../utils/apiCache';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../notifications/NotificationBell';
 
@@ -21,6 +22,10 @@ export default function Navbar() {
       await authService.logout();
     } catch {}
     dispatch(logout());
+    // The store's logout subscriber also purges api-cache; issuing it here
+    // too keeps the purge independent of the current auth state (e.g. a
+    // repeat logout when isAuthenticated is already false).
+    clearApiCache();
     navigate('/login');
   };
 
