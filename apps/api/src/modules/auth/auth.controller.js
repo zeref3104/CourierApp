@@ -2,6 +2,7 @@ const authService = require('./auth.service');
 const asyncHandler = require('../../utils/asyncHandler');
 const apiResponse = require('../../utils/apiResponse');
 const UnauthorizedException = require('../../exceptions/UnauthorizedException');
+const ConflictException = require('../../exceptions/ConflictException');
 const TenantNotFoundException = require('../../exceptions/TenantNotFoundException');
 const logger = require('../../logs/logger');
 
@@ -88,6 +89,20 @@ function setRefreshCookie(res, token) {
     path: '/api/v1/auth',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
+}
+
+/**
+ * Anti-enumeration response floor (design D3). The forgot handler always runs
+ * the same steps and ALWAYS waits this fixed 300 ms before answering, so the
+ * elapsed time cannot reveal whether the email matched an account. Only the
+ * 409 disambiguation — an intentional, explicit signal — returns immediately.
+ */
+const FORGOT_RESPONSE_FLOOR_MS = 300;
+
+function responseFloor(startedAt) {
+  const remaining = FORGOT_RESPONSE_FLOOR_MS - (Date.now() - startedAt);
+  if (remaining <= 0) return Promise.resolve();
+  return new Promise((resolve) => setTimeout(resolve, remaining));
 }
 
 const authController = {
@@ -235,6 +250,51 @@ const authController = {
     const masterConnection = req.app.locals.masterConnection;
     const result = await authService.registerClient({ ...req.body, masterConnection });
     apiResponse.created(res, result, 'Registration successful');
+  }),
+
+  /**
+   * POST /auth/forgot-password — stage a purpose-scoped OTP and always answer
+   * the same generic 200 (password-recovery spec R1, design D3): identical
+   * status + body whether or not the email exists, with the fixed response
+   * floor applied to EVERY non-409 path so timing reveals nothing either.
+   */
+  forgotPassword: asyncHandler(async (req, res) => {
+    const { email, lang, code } = req.body;
+    const masterConnection = req.app.locals.masterConnection;
+    const startedAt = Date.now();
+
+    let result;
+    try {
+      result = await authService.forgotPassword({ email, lang, code, masterConnection });
+    } catch (err) {
+      // The 409 disambiguation is deliberate and skips the floor; every other
+      // outcome (429 cooldown included) waits it, keeping the path constant.
+      if (!(err instanceof ConflictException)) await responseFloor(startedAt);
+      throw err;
+    }
+
+    await responseFloor(startedAt);
+    apiResponse.success(res, result, 'If an account matches, a recovery code has been sent');
+  }),
+
+  /**
+   * POST /auth/reset-password — verify the purpose-scoped OTP and apply the new
+   * password (password-recovery spec R5/R6, design D1/D6). Every failure mode
+   * answers the same generic 422 thrown by the service.
+   */
+  resetPassword: asyncHandler(async (req, res) => {
+    const { email, code, otpCode, newPassword } = req.body;
+    const masterConnection = req.app.locals.masterConnection;
+
+    const result = await authService.resetPassword({
+      email,
+      code,
+      otpCode,
+      newPassword,
+      masterConnection,
+    });
+
+    apiResponse.success(res, result, 'Password reset successful');
   }),
 };
 

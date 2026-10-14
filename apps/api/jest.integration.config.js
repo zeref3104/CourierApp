@@ -1,12 +1,11 @@
 /**
- * Integration test configuration (@courier/api) — fixes the previously dead
- * `test:integration` script (task 1.14).
- * Runs tests/integration/** against a real MongoDB test database (see
- * tests/integration/client-code.http.test.js). Longer timeout: the
- * concurrency scenario fans out 25 parallel HTTP requests.
+ * Integration test configuration (@courier/api).
+ * Referenced by the `test:integration` script (previously dangling — the file
+ * did not exist). The integration suite talks to a REAL MongoDB (MONGO_URI
+ * from apps/api/.env) and must NOT run inside `npm test`, which is scoped to
+ * tests/unit by jest.config.js.
  */
 module.exports = {
   testEnvironment: 'node',
   testMatch: ['<rootDir>/tests/integration/**/*.test.js'],
-  testTimeout: 60000,
 };
