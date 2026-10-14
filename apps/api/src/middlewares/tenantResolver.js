@@ -11,6 +11,10 @@ const PUBLIC_ROUTES = [
   '/auth/client/refresh',
   '/auth/refresh',
   '/auth/password',
+  // Password recovery is pre-tenant: the account (and its company) is resolved
+  // from the email inside the flow itself, never from the request Host/slug.
+  '/auth/forgot-password',
+  '/auth/reset-password',
   '/auth/superadmin/login',
   '/superadmin/login',
   '/public',
