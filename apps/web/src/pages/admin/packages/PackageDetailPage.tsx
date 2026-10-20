@@ -18,6 +18,7 @@ export default function PackageDetailPage() {
   const [pkg, setPkg] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [changingStatus, setChangingStatus] = useState(false);
   const [companyName, setCompanyName] = useState('');
 
   useEffect(() => {
@@ -149,14 +150,21 @@ export default function PackageDetailPage() {
                 {nextStatuses.map((s) => (
                   <button
                     key={s}
+                    disabled={changingStatus}
                     onClick={async () => {
-                      const res = await packageService.changeStatus(id!, s);
-                      // Update local state with the server response — no full reload needed
-                      setPkg(res.data);
-                      // Refresh history in background (non-blocking)
-                      packageService.getHistory(id!).then((h) => setHistory(h.data)).catch(() => {});
+                      if (changingStatus) return;
+                      setChangingStatus(true);
+                      try {
+                        const res = await packageService.changeStatus(id!, s);
+                        // Update local state with the server response — no full reload needed
+                        setPkg(res.data);
+                        // Refresh history in background (non-blocking)
+                        packageService.getHistory(id!).then((h) => setHistory(h.data)).catch(() => {});
+                      } finally {
+                        setChangingStatus(false);
+                      }
                     }}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {t(`status.${s}`, { defaultValue: s })}
                   </button>

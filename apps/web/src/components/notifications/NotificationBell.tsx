@@ -46,12 +46,24 @@ export default function NotificationBell() {
     loadUnread();
   }, [loadUnread]);
 
-  // Refresh when the server pushes a new notification
+  // Refresh when the server pushes a new notification. One status change emits
+  // two notifications (customer + acting staff) in quick succession, so the
+  // unread-count read is coalesced instead of firing once per notification.
   useEffect(() => {
-    return onSocketEvent('socket:notifications-changed', () => {
-      loadUnread();
-      if (open) loadList();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const unsubscribe = onSocketEvent('socket:notifications-changed', () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        loadUnread();
+        if (open) loadList();
+      }, 300);
     });
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      unsubscribe();
+    };
   }, [loadUnread, loadList, open]);
 
   // Close on outside click

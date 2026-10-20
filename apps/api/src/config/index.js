@@ -38,8 +38,20 @@ const config = {
 
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
-    max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 500,
-    mutationMax: parseInt(process.env.RATE_LIMIT_MUTATION_MAX, 10) || 60,
+    // Read+write ceiling per authenticated user (per IP when anonymous) over
+    // one window. 1000 is deliberately generous: a single status change costs
+    // several reads (list + detail + history + notifications) and an admin
+    // working through a batch must never hit the ceiling. Lower it via env only
+    // if the deployment needs a stricter abuse budget.
+    max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 1000,
+    // Writes only (POST/PUT/PATCH/DELETE). Must absorb bulk status work: a busy
+    // operator can legitimately change 100+ packages in a few minutes.
+    mutationMax: parseInt(process.env.RATE_LIMIT_MUTATION_MAX, 10) || 300,
+    // Session refresh is NOT a credential-guessing surface (the refresh token
+    // is already a high-entropy secret), so it gets its own bucket instead of
+    // sharing the strict auth-limiter one. Sharing it locked users out for 15
+    // minutes after a token rotation.
+    refreshMax: parseInt(process.env.RATE_LIMIT_REFRESH_MAX, 10) || 120,
     redisUrl: process.env.REDIS_URL || '',
   },
 

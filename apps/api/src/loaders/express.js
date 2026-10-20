@@ -30,6 +30,14 @@ function init({ app }) {
   // Logging
   app.use(morganMiddleware);
 
+  // Trust the reverse proxy hops declared by the operator (for accurate client
+  // IPs in rate limiting and logs). Set BEFORE the limiters are mounted: with
+  // trust proxy 0 behind a proxy, every request appears to come from the proxy
+  // IP, so all users share one bucket and one busy operator blocks everybody.
+  // Defaults to 0: with no proxy in front we must NOT trust the spoofable
+  // X-Forwarded-For header. Set TRUST_PROXY=n to match your nginx/Caddy hops.
+  app.set('trust proxy', config.trustProxy);
+
   // Rate limiting — global ceiling for all /api/* reads + writes
   app.use('/api/', globalLimiter);
 
@@ -41,12 +49,6 @@ function init({ app }) {
     }
     next();
   });
-
-  // Trust the reverse proxy hops declared by the operator (for accurate client
-  // IPs in rate limiting and logs). Defaults to 0: with no proxy in front we
-  // must NOT trust the spoofable X-Forwarded-For header. Set TRUST_PROXY=n to
-  // match your nginx/Caddy hop count.
-  app.set('trust proxy', config.trustProxy);
 
   return app;
 }
